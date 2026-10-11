@@ -7620,7 +7620,11 @@ JA眉山GS前|34.03774|134.51314|113
       if (/応答が 40\d/.test(m)) return 'アクセスを断られました。GAS のデプロイを「アクセスできるユーザー：全員」にしてください';
       if (/応答が 5\d\d/.test(m)) return 'サーバー側でエラーが出ています。少し待ってから、もう一度試してください';
       if (/JSONではない/.test(m)) return 'GAS のウェブアプリの URL ではないようです（デプロイの画面に出る …/exec の URL を使ってください）';
-      if (/failed to fetch|networkerror|load failed|network/i.test(m)) return 'つながりませんでした。電波と URL を確かめてください';
+      /* GAS がアクセスを断ると（デプロイが「全員」でない）、ブラウザには中身の無い失敗しか届かない。
+         電波があるのに失敗したら、まずその設定を疑うよう案内する */
+      if (/failed to fetch|networkerror|load failed|network/i.test(m)) return navigator.onLine
+        ? 'つながりませんでした。GAS の「デプロイを管理」で、アクセスできるユーザーが「全員」になっているか確かめてください（URL が途中で切れていないかも）'
+        : 'つながりませんでした。電波のあるところで、もう一度試してください';
       return m || '保存できませんでした';
     }
     async function cloudFetch(url, init) {
