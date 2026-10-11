@@ -151,6 +151,13 @@
   body.dark input::placeholder,
   body.dark textarea::placeholder { color: #64748b !important; }
   /* テキスト */
+  /* 明るい画面：補足の文字（slate-400/500）が白地で 2.6 しかなく読みにくかった。
+     白・薄い藍・薄い灰のどの背景でも 4.5:1 を超える濃さへ寄せる（暗い画面は下の body.dark 側） */
+  body:not(.dark) .text-slate-400 { color: #5f6e84; }
+  body:not(.dark) .text-slate-500 { color: #536175; }
+  body:not(.dark) .text-indigo-500 { color: #4f46e5; }
+  body:not(.dark) .text-rose-500 { color: #e11d48; }
+  body:not(.dark) .text-amber-600 { color: #b45309; }
   body.dark .text-ink   { color: #e2e8f0 !important; }
   body.dark .text-slate-600,
   body.dark .text-slate-500 { color: #94a3b8 !important; }
@@ -195,6 +202,14 @@
   /* セレクトボックス（ダークモード） */
   body.dark select { background: #1e293b !important; border-color: #475569 !important; color: #e2e8f0 !important; }
   body.dark .bg-amber-50 { background: #422006 !important; }
+  body.dark .bg-amber-100 { background: #451a03 !important; }
+  body.dark .hover\:bg-amber-200:hover { background: #78350f !important; }
+  body.dark .bg-rose-100 { background: #4c0519 !important; }
+  body.dark .hover\:bg-rose-200:hover { background: #881337 !important; }
+  body.dark .text-rose-700 { color: #fda4af !important; }
+  body.dark .bg-rose-50 { background: #4c0519 !important; }
+  body.dark .text-rose-600 { color: #fda4af !important; }
+  body.dark .border-rose-200 { border-color: #9f1239 !important; }
   body.dark .text-amber-700 { color: #fcd34d !important; }
   body.dark .border-amber-200 { border-color: #78350f !important; }
   body.dark .bg-indigo-50 { background: #1e1b4b !important; }
@@ -239,7 +254,7 @@
   body.dark .fx-info  { border-color: rgba(71,85,105,.6); background: rgba(30,41,59,.6); }
   /* 見出し・場所・手引き */
   .fx-title { font-size: 13px; font-weight: 700; line-height: 1.6; color: #1f2433; overflow-wrap: anywhere; }
-  .fx-where { font-size: 11px; font-weight: 700; color: #64748b; margin-top: 2px; }
+  .fx-where { font-size: 11px; font-weight: 700; color: #536175; margin-top: 2px; }
   .fx-box   { border-radius: 12px; padding: 10px 12px; background: #fff; border: 1px solid #e2e8f0; }
   .fx-how   { font-size: 12px; font-weight: 600; line-height: 1.6; color: #475569; }
   .fx-lead  { font-size: 10px; font-weight: 800; color: #4f46e5; margin-bottom: 4px; }
@@ -259,7 +274,7 @@
   .fx-btn:hover { border-color: #94a3b8; background: #f8fafc; }
   body.dark .fx-btn { background: rgba(30,41,59,.9); border-color: #475569; color: #cbd5e1; }
   body.dark .fx-btn:hover { border-color: #64748b; background: rgba(51,65,85,.9); }
-  .fx-btn-quiet { color: #64748b; }
+  .fx-btn-quiet { color: #536175; }
   body.dark .fx-btn-quiet { color: #94a3b8; }
 
   /* ===== 入力候補のチップ ===== */
@@ -293,7 +308,7 @@
   .isu-msg { font-size: 11px; font-weight: 600; line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
   .isu-error .isu-msg { color: #b91c1c; }
   .isu-warn  .isu-msg { color: #b45309; }
-  .isu-info  .isu-msg { color: #64748b; }
+  .isu-info  .isu-msg { color: #536175; }
   body.dark .isu-error .isu-msg { color: #fca5a5; }
   body.dark .isu-warn  .isu-msg { color: #fcd34d; }
   body.dark .isu-info  .isu-msg { color: #cbd5e1; }
@@ -341,15 +356,16 @@
     font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px;
     letter-spacing: .01em; max-width: 100%; word-break: break-all;
   }
-  .rt-meta { font-size: 10px; font-weight: 700; color: #94a3b8; word-break: break-all; }
+  .rt-meta { font-size: 10px; font-weight: 700; color: #5f6e84; word-break: break-all; }
+  body.dark .rt-meta { color: #94a3b8; }
   /* 前後のつながり */
   .lk-tag {
-    font-size: 9px; font-weight: 900; color: #fff; background: #6366f1;
+    font-size: 9px; font-weight: 900; color: #fff; background: #4f46e5;
     padding: 1px 5px; border-radius: 5px; line-height: 1.5; flex-shrink: 0;
   }
-  .lk-tag-next { background: #0d9488; }
+  .lk-tag-next { background: #0f766e; }
   .lk-chip { font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 999px; line-height: 1.5; }
-  .lk-ok    { background: #eef2f7; color: #64748b; }
+  .lk-ok    { background: #eef2f7; color: #536175; }
   .lk-tight { background: #ccfbf1; color: #0f766e; }
   .lk-bad   { background: #ffe4e6; color: #be123c; }
   body.dark .lk-ok    { background: #1e293b; color: #cbd5e1; }
@@ -373,7 +389,7 @@
   body.dark .rt-dest { color: #cbd5e1; }
   .rt-pf {
     font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px;
-    background: #f1f4f9; color: #64748b; max-width: 100%; word-break: break-all;
+    background: #f1f4f9; color: #536175; max-width: 100%; word-break: break-all;
   }
   body.dark .rt-pf { background: #1e293b; color: #94a3b8; }
   .rt-tr {
@@ -715,6 +731,7 @@ const CHANGELOG = [
     ['new', '設定に、版の番号とこの履歴を出しました'],
     ['up', '画面の部品をアプリの中に入れました。インターネットにつながっていなくても開けます'],
     ['up', '言い方と表記をそろえました（「選ぶ」「タイトル」「時刻」「重なり」など）'],
+    ['up', '薄い灰色の補足や、色つきの文字を濃くして読みやすくしました（色味はそのままです）'],
     ['up', 'スマホの幅でも、上の帯に旅程のタイトルが見えるようにしました。明るい画面と暗い画面の切り替えは設定からできます'],
     ['fix', '旅程を切り替えたあとで「元に戻す」を押すと、前に開いていた旅程の中身で上書きされることがありました'],
     ['fix', '開いていた旅程のデータが壊れていると、旅程の一覧が「新しい旅程」1件だけになることがありました。いまは読めない旅程だけを控えに移し、ほかの旅程はそのまま残ります'],
@@ -727,7 +744,7 @@ const CHANGELOG = [
     ['new', '紙に合わせて段と枚数を自動で決める印刷'],
   ] },
 ];
-const CHANGE_TAGS = { new: { label: '新機能', cls: 'bg-indigo-100 text-indigo-700' }, up: { label: '改善', cls: 'bg-emerald-100 text-emerald-700' }, fix: { label: '修正', cls: 'bg-amber-100 text-amber-800' } };
+const CHANGE_TAGS = { new: { label: '新機能', cls: 'bg-indigo-100 text-indigo-700' }, up: { label: '改善', cls: 'bg-emerald-100 text-emerald-700' }, fix: { label: '修正', cls: 'bg-amber-100 text-amber-700' } };
 /* '1.10.0' > '1.9.2' のように数字で比べる */
 const verCmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
@@ -1209,8 +1226,9 @@ createApp({
     function onColor(hex) {
       const h = String(hex || '').replace('#', '');
       if (h.length < 6) return '#ffffff';
-      const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-      return (0.299 * r + 0.587 * g + 0.114 * b) > 165 ? '#1f2433' : '#ffffff';
+      const c = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+      /* 明るさのしきい値（旧：165）だと、水色・橙の路線色に白い文字が乗って読みにくかった（2.4） */
+      return _ratio(c, [255, 255, 255]) >= _ratio(c, [31, 36, 51]) ? '#ffffff' : '#1f2433';
     }
     /* その駅から乗る列車の色（路線色がなければカテゴリ色） */
     const segColor = (ev, st) => lineColor(st && st.line) || cat(ev && ev.type).color;
@@ -7628,6 +7646,35 @@ JA眉山GS前|34.03774|134.51314|113
     const scrolled = ref(false);
     function onScroll() { scrolled.value = window.scrollY > 8; }
 
+
+    /* ---------- 文字の濃さ ----------
+       カテゴリ色・地点の色をそのまま文字色に使うと、明るい色（黄・緑・空色）は淡い背景に沈む（1.8〜3）。
+       ink(色, 背景) は色味を保ったまま、背景に対して 4.5:1 になるまで黒（暗い背景なら白）へ寄せる。
+       背景を省くと、いまの明暗の面（明るい画面＝薄い灰、暗い画面＝濃紺）に合わせる。
+       白い文字を乗せる下地には ink(色, '#ffffff') を使う（白とのあいだで 4.5:1 になる） */
+    const _inkCache = new Map();
+    const _rgb = (h) => {
+      const m = String(h || '').trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (!m) return null;
+      const x = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+      return [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16));
+    };
+    const _lum = (c) => { const v = c.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const _ratio = (a, b) => { const A = _lum(a), B = _lum(b); return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); };
+    function ink(hex, bg) {
+      const surface = bg || (isDark.value ? '#1e293b' : '#f1f5f9');
+      const key = hex + '|' + surface;
+      if (_inkCache.has(key)) return _inkCache.get(key);
+      const c0 = _rgb(hex), b = _rgb(surface);
+      if (!c0 || !b) return hex;
+      const toward = _lum(b) < 0.4 ? [255, 255, 255] : [0, 0, 0];
+      let c = c0.slice();
+      for (let i = 0; i < 30 && _ratio(c, b) < 4.5; i++) c = c.map((v, k) => Math.round(v + (toward[k] - v) * 0.07));
+      const out = '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+      _inkCache.set(key, out);
+      return out;
+    }
+
     /* ---------- ダークモード ---------- */
     const savedDark = (() => { try { return localStorage.getItem('dark_mode'); } catch { return null; } })();
     const isDark = ref(savedDark === null
@@ -8546,7 +8593,7 @@ JA眉山GS前|34.03774|134.51314|113
       APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog,
       dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
       share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
-      swState, swVersion,
+      swState, swVersion, ink,
       addDay, removeDay, openAdd, openEdit, saveEvent, deleteEvent, otherTab, reloadFromStore, storeChangedElsewhere,
       tryCloseEdit, closeEdit, discardEdit, discardAsk, editDirty,
       linkState, useLinkPlace, useLinkTime, pushNextStart, setEventPlace, shortName,
@@ -8829,7 +8876,7 @@ JA眉山GS前|34.03774|134.51314|113
                     ? warnsOf(i).filter(w => w.level === 'error').length + '件の要修正'
                     : warnsOf(i).length + '件の注意'"
                   class="w-4 h-4 rounded-full grid place-items-center text-[9px] font-black text-white shrink-0"
-                  :class="warnsOf(i).some(w => w.level === 'error') ? 'bg-rose-500' : 'bg-amber-500'">!</span>
+                  :class="warnsOf(i).some(w => w.level === 'error') ? 'bg-rose-600' : 'bg-amber-700'">!</span>
           </button>
           <button @click="addDay" title="日程を追加（D）"
             class="tap shrink-0 nowrap px-3 py-2 rounded-xl text-sm font-bold text-indigo-500 border-2 border-dashed border-indigo-200 hover:bg-indigo-50 transition flex items-center gap-1.5">
@@ -8897,10 +8944,10 @@ JA眉山GS前|34.03774|134.51314|113
             </div>
             <!-- 費用の内訳 -->
             <div v-if="dayStats(day).cost > 0" class="flex items-center gap-2 flex-wrap mt-1.5 text-[10px] font-bold">
-              <span v-if="dayStats(day).moveCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.train.soft, color: CATS.train.color}">移動 {{ yen(dayStats(day).moveCost) }}</span>
-              <span v-if="dayStats(day).mealCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.meal.soft, color: CATS.meal.color}">食事 {{ yen(dayStats(day).mealCost) }}</span>
-              <span v-if="dayStats(day).stayCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.accommodation.soft, color: CATS.accommodation.color}">宿泊 {{ yen(dayStats(day).stayCost) }}</span>
-              <span v-if="dayStats(day).otherCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.activity.soft, color: CATS.activity.color}">その他 {{ yen(dayStats(day).otherCost) }}</span>
+              <span v-if="dayStats(day).moveCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.train.soft, color: ink(CATS.train.color, CATS.train.soft)}">移動 {{ yen(dayStats(day).moveCost) }}</span>
+              <span v-if="dayStats(day).mealCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.meal.soft, color: ink(CATS.meal.color, CATS.meal.soft)}">食事 {{ yen(dayStats(day).mealCost) }}</span>
+              <span v-if="dayStats(day).stayCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.accommodation.soft, color: ink(CATS.accommodation.color, CATS.accommodation.soft)}">宿泊 {{ yen(dayStats(day).stayCost) }}</span>
+              <span v-if="dayStats(day).otherCost" class="px-1.5 py-0.5 rounded-md" :style="{background: CATS.activity.soft, color: ink(CATS.activity.color, CATS.activity.soft)}">その他 {{ yen(dayStats(day).otherCost) }}</span>
               <span v-if="dayStats(day).paidCost" class="px-1.5 py-0.5 rounded-md"
                     :class="isDark ? 'bg-emerald-900/40 text-emerald-300' : 'bg-emerald-50 text-emerald-700'"
                     title="出発前に払い終えているぶん">
@@ -8937,7 +8984,7 @@ JA眉山GS前|34.03774|134.51314|113
                     <button v-for="m in SHIFT_STEPS" :key="'sh'+m" @click="shiftDayTimes(di, m)"
                             class="tap px-1 py-1.5 rounded-lg text-[10px] font-bold tabular-nums transition"
                             :style="m < 0
-                              ? (isDark ? {background:'#0f172a', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'})
+                              ? (isDark ? {background:'#0f172a', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'})
                               : (isDark ? {background:'#1e1b4b', color:'#a5b4fc'} : {background:'#eef2ff', color:'#4f46e5'})">
                       {{ m > 0 ? '+' : '−' }}{{ Math.abs(m) }}
                     </button>
@@ -8987,7 +9034,7 @@ JA眉山GS前|34.03774|134.51314|113
               <span v-if="issueCounts.error" class="px-1.5 py-0.5 rounded-md text-[10px] bg-rose-100 text-rose-700">要修正 {{ issueCounts.error }}</span>
               <span v-if="issueCounts.warn" class="px-1.5 py-0.5 rounded-md text-[10px] bg-amber-100 text-amber-700">注意 {{ issueCounts.warn }}</span>
               <span v-if="issueCounts.info" class="px-1.5 py-0.5 rounded-md text-[10px]"
-                    :class="isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'">気づき {{ issueCounts.info }}</span>
+                    :class="isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-500'">気づき {{ issueCounts.info }}</span>
               <span v-if="!activeIssues.length" class="text-emerald-600">この日は問題なし</span>
               <button v-if="overlapWarnsOf(di).length" @click="toggleIgnoreOverlap(di)"
                       title="フェスの被りなど、重なっていて当たり前の日はこちら"
@@ -9036,7 +9083,7 @@ JA眉山GS前|34.03774|134.51314|113
             <i class="fa-regular fa-map text-3xl text-slate-300"></i>
             <div class="text-slate-400 text-sm font-bold mt-3">この日はまだ空です</div>
             <div v-if="prevDayEnd(di)" class="text-[11px] font-bold mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                 :style="{background: isDark ? 'rgba(14,165,233,0.14)' : '#f0f9ff', color: ANCHORS.start.color}">
+                 :style="{background: isDark ? 'rgba(14,165,233,0.14)' : '#f0f9ff', color: ink(ANCHORS.start.color)}">
               <i class="fa-solid" :class="ANCHORS.start.icon"></i>前の日は「{{ prevDayEnd(di) }}」で終わっています
             </div>
             <div class="text-slate-400 text-[11px] font-medium mt-2 leading-relaxed">
@@ -9100,7 +9147,7 @@ JA眉山GS前|34.03774|134.51314|113
                  :class="movingId === ev.id ? 'ev-moving' : ''">
               <!-- node -->
               <div class="absolute left-2 top-3 w-9 h-9 rounded-full grid place-items-center text-white shadow-md ring-4 ring-white z-10"
-                   :style="{ background: ev.anchor ? anchorCfg(ev.anchor).color : cat(ev.type).color }">
+                   :style="{ background: ev.anchor ? ink(anchorCfg(ev.anchor).color, '#ffffff') : ink(cat(ev.type).color, '#ffffff') }">
                 <i class="fa-solid" :class="ev.anchor ? anchorCfg(ev.anchor).icon : cat(ev.type).icon"></i>
               </div>
 
@@ -9113,7 +9160,7 @@ JA眉山GS前|34.03774|134.51314|113
                   <!-- time -->
                   <div class="shrink-0 text-right min-w-[52px] pt-0.5">
                     <div v-if="ev.anchor" class="text-[9px] font-black leading-none mb-1 tracking-wider"
-                         :style="{color: anchorCfg(ev.anchor).color}">{{ ANCHORS[ev.anchor].timeLabel }}</div>
+                         :style="{color: ink(anchorCfg(ev.anchor).color)}">{{ ANCHORS[ev.anchor].timeLabel }}</div>
                     <div class="font-black text-ink tabular-nums leading-none">{{ ev.startTime || '—' }}</div>
                     <div v-if="ev.endTime" class="text-[11px] font-bold tabular-nums mt-1"
                          :class="crossesDay(ev) ? 'text-amber-600' : 'text-slate-400'"
@@ -9125,10 +9172,10 @@ JA眉山GS前|34.03774|134.51314|113
                   <!-- body -->
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span v-if="ev.anchor" class="text-[10px] font-black px-2 py-0.5 rounded-full text-white flex items-center gap-1" :style="{ background: anchorCfg(ev.anchor).color }">
+                      <span v-if="ev.anchor" class="text-[10px] font-black px-2 py-0.5 rounded-full text-white flex items-center gap-1" :style="{ background: ink(anchorCfg(ev.anchor).color, '#ffffff') }">
                         <i class="fa-solid" :class="anchorCfg(ev.anchor).icon"></i>{{ anchorCfg(ev.anchor).label }}
                       </span>
-                      <span class="text-[10px] font-black px-2 py-0.5 rounded-full text-white" :style="{ background: cat(ev.type).color }">
+                      <span class="text-[10px] font-black px-2 py-0.5 rounded-full text-white" :style="{ background: ink(cat(ev.type).color, '#ffffff') }">
                         {{ cat(ev.type).label }}
                       </span>
                       <span v-if="duration(ev.startTime, ev.endTime)" class="text-[10px] font-bold"
@@ -9160,7 +9207,7 @@ JA眉山GS前|34.03774|134.51314|113
                     <h3 class="font-black text-ink mt-1.5 leading-snug break-words">{{ ev.title }}</h3>
 
                     <div v-if="ev.location && !redundantLocation(ev)" class="text-xs text-slate-500 font-medium mt-1 flex items-start gap-1.5 break-words">
-                      <i class="fa-solid mt-0.5 shrink-0" :class="isRouteText(ev.location) ? 'fa-route' : 'fa-location-dot'" :style="{ color: cat(ev.type).color }"></i>
+                      <i class="fa-solid mt-0.5 shrink-0" :class="isRouteText(ev.location) ? 'fa-route' : 'fa-location-dot'" :style="{ color: ink(cat(ev.type).color) }"></i>
                       <span class="min-w-0 break-words">{{ ev.location }}</span>
                     </div>
                     <p v-if="ev.notes" class="text-xs text-slate-500 mt-1.5 whitespace-pre-wrap leading-relaxed break-words">{{ ev.notes }}</p>
@@ -9227,7 +9274,7 @@ JA眉山GS前|34.03774|134.51314|113
 
                     <!-- 座席（電車・バス・飛行機・イベント共通） -->
                     <div v-if="ev.seat" class="text-xs mt-1.5 font-bold break-all inline-flex items-center gap-1.5 px-2 py-1 rounded-lg"
-                         :style="isDark ? {background:'#1e293b', color: cat(ev.type).color} : {background: cat(ev.type).soft, color: cat(ev.type).color}">
+                         :style="isDark ? {background:'#1e293b', color: ink(cat(ev.type).color)} : {background: cat(ev.type).soft, color: ink(cat(ev.type).color, cat(ev.type).soft)}">
                       <i class="fa-solid fa-couch text-[10px]"></i>{{ ev.seat }}
                     </div>
 
@@ -9272,18 +9319,18 @@ JA眉山GS前|34.03774|134.51314|113
                                :style="isDark ? {background:'#1e293b',borderColor:'#475569'} : {background:'#fff',borderColor:'#e2e8f0'}">
                             <button @click="toggleAnchor(di, ev, 'end')"
                                     class="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 flex items-center gap-2"
-                                    :style="ev.anchor === 'end' ? {color: ANCHORS.end.color} : {}"
+                                    :style="ev.anchor === 'end' ? {color: ink(ANCHORS.end.color)} : {}"
                                     :class="ev.anchor === 'end' ? '' : 'text-slate-600'">
                               <i class="fa-solid w-4" :class="ANCHORS.end.icon"
-                                 :style="ev.anchor === 'end' ? {color: ANCHORS.end.color} : {color:'#94a3b8'}"></i>
+                                 :style="ev.anchor === 'end' ? {color: ink(ANCHORS.end.color)} : {color:'#94a3b8'}"></i>
                               {{ ev.anchor === 'end' ? '1日の終わりをやめる' : '1日の終わりにする' }}
                             </button>
                             <button @click="toggleAnchor(di, ev, 'start')"
                                     class="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 flex items-center gap-2"
-                                    :style="ev.anchor === 'start' ? {color: ANCHORS.start.color} : {}"
+                                    :style="ev.anchor === 'start' ? {color: ink(ANCHORS.start.color)} : {}"
                                     :class="ev.anchor === 'start' ? '' : 'text-slate-600'">
                               <i class="fa-solid w-4" :class="ANCHORS.start.icon"
-                                 :style="ev.anchor === 'start' ? {color: ANCHORS.start.color} : {color:'#94a3b8'}"></i>
+                                 :style="ev.anchor === 'start' ? {color: ink(ANCHORS.start.color)} : {color:'#94a3b8'}"></i>
                               {{ ev.anchor === 'start' ? '1日の始まりをやめる' : '1日の始まりにする' }}
                             </button>
                             <div class="h-px my-1" :class="isDark ? 'bg-slate-700' : 'bg-slate-100'"></div>
@@ -9364,7 +9411,7 @@ JA眉山GS前|34.03774|134.51314|113
                 </span>
                 <button v-if="insChain(day, ei + 1) && !insNeedsMove(day, ei + 1)" @click="openEdit(di, day.events[ei + 1])"
                         :title="'「' + shortName(day.events[ei].title) + '」は ' + insChain(day, ei + 1).from + ' で終わり、次は ' + insChain(day, ei + 1).to + ' から始まります。押すと次の予定を開きます'"
-                        class="tap relative z-10 inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition max-w-full min-w-0">
+                        class="tap relative z-10 inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition max-w-full min-w-0">
                   <i class="fa-solid fa-link-slash shrink-0"></i>
                   <span class="truncate">{{ insChain(day, ei + 1).from }} → {{ insChain(day, ei + 1).to }}</span>
                   <span class="shrink-0">が食い違い</span>
@@ -9441,7 +9488,7 @@ JA眉山GS前|34.03774|134.51314|113
                   <div class="ptl-ev-dot" :style="{background: ev.anchor ? anchorCfg(ev.anchor).color : cat(ev.type).color}"></div>
 
                   <!-- 時刻 -->
-                  <div v-if="ev.anchor" class="ptl-ev-tlabel" :style="{color: anchorCfg(ev.anchor).color}">{{ ANCHORS[ev.anchor].timeLabel }}</div>
+                  <div v-if="ev.anchor" class="ptl-ev-tlabel" :style="{color: ink(anchorCfg(ev.anchor).color, '#ffffff')}">{{ ANCHORS[ev.anchor].timeLabel }}</div>
                   <div class="ptl-ev-time">
                     {{ ev.startTime || '—' }}<span v-if="ev.endTime"> 〜 {{ nextMark(ev) }}{{ ev.endTime }}</span>
                   </div>
@@ -9449,7 +9496,7 @@ JA眉山GS前|34.03774|134.51314|113
                   <!-- タイトル行 -->
                   <div class="ptl-ev-name">
                     <span v-if="ev.anchor" class="ptl-anchor-badge" :style="{background: anchorCfg(ev.anchor).color}">{{ anchorCfg(ev.anchor).label }}</span>
-                    <span class="ptl-ev-badge" :style="{background: cat(ev.type).soft, color: cat(ev.type).color}">{{ cat(ev.type).label }}</span>{{ ev.title }}
+                    <span class="ptl-ev-badge" :style="{background: cat(ev.type).soft, color: ink(cat(ev.type).color, cat(ev.type).soft)}">{{ cat(ev.type).label }}</span>{{ ev.title }}
                   </div>
 
                   <!-- 場所 -->
@@ -9845,7 +9892,7 @@ JA眉山GS前|34.03774|134.51314|113
                 <button v-if="iss.type === 'transfer' || iss.type === 'rail' || (iss.type === 'route' && iss.stop !== undefined)"
                         @click="fixByTimetable(iss)"
                         class="tap px-3 py-2 rounded-xl text-xs font-black text-white shadow-sm"
-                        :style="{background: CATS.train.color}">
+                        :style="{background: ink(CATS.train.color, '#ffffff')}">
                   <i class="fa-solid fa-magnifying-glass mr-1"></i>時刻表から選び直す
                 </button>
                 <button v-if="iss.type === 'overlap'" @click="toggleIgnoreOverlap(fixDlg.dayIdx); fixDlg.open = false"
@@ -9911,7 +9958,7 @@ JA眉山GS前|34.03774|134.51314|113
                       @click="tw.kind = k; tw.railCands = []; tw.order = []; tw.note = ''"
                       class="tap px-3 py-2 rounded-xl text-xs font-black border-2 transition flex items-center gap-1.5"
                       :style="tw.kind === k
-                        ? {borderColor: CATS[k].color, color: CATS[k].color, background: CATS[k].soft}
+                        ? {borderColor: CATS[k].color, color: ink(CATS[k].color, CATS[k].soft), background: CATS[k].soft}
                         : {borderColor: isDark ? '#334155' : '#e2e8f0', color: '#94a3b8', background: 'transparent'}">
                 <i class="fa-solid" :class="CATS[k].icon"></i>{{ k === 'bus' ? '路線バス' : '電車' }}
               </button>
@@ -10190,7 +10237,7 @@ JA眉山GS前|34.03774|134.51314|113
 
           <div class="flex items-center gap-2 mb-5">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
-                 :style="{background: editing.anchor ? anchorCfg(editing.anchor).color : cat(editing.type).color}">
+                 :style="{background: editing.anchor ? ink(anchorCfg(editing.anchor).color, '#ffffff') : ink(cat(editing.type).color, '#ffffff')}">
               <i class="fa-solid" :class="editing.anchor ? anchorCfg(editing.anchor).icon : cat(editing.type).icon"></i>
             </div>
             <h2 class="font-black text-ink text-lg">{{ modalTitle(editing) }}</h2>
@@ -10205,7 +10252,7 @@ JA眉山GS前|34.03774|134.51314|113
                 Day {{ (state.days[editingDayIdx] || {}).dayNumber || (editingDayIdx + 1) }}<span v-if="shortDate((state.days[editingDayIdx]||{}).date)" class="text-slate-400 font-bold">（{{ shortDate(state.days[editingDayIdx].date) }}）</span>
               </span>
               <span v-if="editing.anchor" class="text-[10px] font-black px-2 py-0.5 rounded-full text-white flex items-center gap-1 shrink-0"
-                    :style="{background: anchorCfg(editing.anchor).color}">
+                    :style="{background: ink(anchorCfg(editing.anchor).color, '#ffffff')}">
                 <i class="fa-solid" :class="anchorCfg(editing.anchor).icon"></i>{{ anchorCfg(editing.anchor).label }}
               </span>
               <span v-else class="text-[11px] font-bold text-slate-400 shrink-0">通常の予定</span>
@@ -10241,14 +10288,14 @@ JA眉山GS前|34.03774|134.51314|113
               <button @click="editing.anchor='start'"
                 class="rounded-xl py-2 text-center transition border-2 text-xs font-bold"
                 :style="editing.anchor==='start'
-                  ? {borderColor: ANCHORS.start.color, background: isDark ? 'rgba(14,165,233,0.18)' : '#e0f2fe', color: ANCHORS.start.color}
+                  ? {borderColor: ANCHORS.start.color, background: isDark ? 'rgba(14,165,233,0.18)' : '#e0f2fe', color: ink(ANCHORS.start.color)}
                   : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f8fafc', color:'#94a3b8'}">
                 <i class="fa-solid block mb-0.5" :class="ANCHORS.start.icon"></i>出発地点
               </button>
               <button @click="editing.anchor='end'"
                 class="rounded-xl py-2 text-center transition border-2 text-xs font-bold"
                 :style="editing.anchor==='end'
-                  ? {borderColor: ANCHORS.end.color, background: isDark ? 'rgba(225,29,72,0.18)' : '#ffe4e6', color: ANCHORS.end.color}
+                  ? {borderColor: ANCHORS.end.color, background: isDark ? 'rgba(225,29,72,0.18)' : '#ffe4e6', color: ink(ANCHORS.end.color)}
                   : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f8fafc', color:'#94a3b8'}">
                 <i class="fa-solid block mb-0.5" :class="ANCHORS.end.icon"></i>到着地点
               </button>
@@ -10267,7 +10314,7 @@ JA眉山GS前|34.03774|134.51314|113
               <span class="text-xs font-bold text-slate-500 shrink-0">カテゴリ</span>
               <template v-if="!catOpen">
                 <span class="text-xs font-black px-2 py-1 rounded-lg flex items-center gap-1.5 shrink-0"
-                      :style="isDark ? {background:'#1e293b', color: cat(editing.type).color} : {background: cat(editing.type).soft, color: cat(editing.type).color}">
+                      :style="isDark ? {background:'#1e293b', color: ink(cat(editing.type).color)} : {background: cat(editing.type).soft, color: ink(cat(editing.type).color, cat(editing.type).soft)}">
                   <i class="fa-solid" :class="cat(editing.type).icon"></i>{{ cat(editing.type).label }}
                 </span>
                 <button @click="catOverride = true" class="tap shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold text-indigo-500 hover:underline hover:bg-indigo-500/10">変更</button>
@@ -10284,8 +10331,10 @@ JA眉山GS前|34.03774|134.51314|113
                     :style="editing.type===k
                       ? {background: CATS[k].soft, borderColor: CATS[k].color}
                       : {borderColor: 'transparent', background: isDark ? '#1e293b' : '#f1f4f9'}">
-                    <i class="fa-solid block" :class="CATS[k].icon" :style="{color: CATS[k].color}"></i>
-                    <span class="text-[9px] font-bold text-slate-600 mt-0.5 block leading-tight">{{ CATS[k].label }}</span>
+                    <i class="fa-solid block" :class="CATS[k].icon" :style="{color: ink(CATS[k].color)}"></i>
+                    <!-- 選んでいるものは淡い地なので、その地に合わせて濃くする（暗い画面の text-slate-600 は !important なので外す） -->
+                    <span class="text-[9px] font-bold mt-0.5 block leading-tight" :class="editing.type===k ? '' : 'text-slate-600'"
+                          :style="editing.type===k ? {color: ink(CATS[k].color, CATS[k].soft)} : null">{{ CATS[k].label }}</span>
                   </button>
                 </div>
               </div>
@@ -10300,7 +10349,7 @@ JA眉山GS前|34.03774|134.51314|113
           <div v-if="titleSuggests(editing).length" class="flex items-center gap-1.5 flex-wrap mb-3">
             <button v-for="t in titleSuggests(editing)" :key="'ts'+t" @click="editing.title = t"
               class="px-2 py-1 rounded-lg text-[11px] font-bold transition"
-              :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'}">
+              :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'}">
               <i class="fa-solid fa-plus text-[8px] mr-1 opacity-60"></i>{{ t }}
             </button>
           </div>
@@ -10310,7 +10359,7 @@ JA眉山GS前|34.03774|134.51314|113
             <label class="block">
               <span class="text-xs font-bold flex items-center gap-1"
                     :class="editing.anchor ? '' : 'text-slate-500'"
-                    :style="editing.anchor ? {color: anchorCfg(editing.anchor).color} : {}">
+                    :style="editing.anchor ? {color: ink(anchorCfg(editing.anchor).color)} : {}">
                 <i v-if="editing.anchor" class="fa-solid text-[10px]" :class="anchorCfg(editing.anchor).icon"></i>{{ startLabel(editing) }}
               </span>
               <input type="time" v-model="editing.startTime" @change="editing.__autoTime = false"
@@ -10416,11 +10465,11 @@ JA眉山GS前|34.03774|134.51314|113
               <span class="text-[10px] font-bold text-slate-400 shrink-0">所要時間で入力</span>
               <button v-for="m in [15, 30, 60, 90, 120]" :key="'dur'+m" @click="bumpEnd(m)"
                 class="tap px-2 py-1 rounded-lg text-[11px] font-bold transition tabular-nums"
-                :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'}">
+                :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'}">
                 +{{ fmtMin(m) }}
               </button>
               <button v-if="editing.endTime" @click="clearEnd" title="終了時刻を空にする"
-                class="tap px-2 py-1 rounded-lg text-[11px] font-bold text-rose-400 hover:text-rose-600 transition">
+                class="tap px-2 py-1 rounded-lg text-[11px] font-bold text-rose-600 hover:text-rose-700 transition">
                 <i class="fa-solid fa-eraser mr-0.5"></i>クリア
               </button>
             </template>
@@ -10436,13 +10485,13 @@ JA眉山GS前|34.03774|134.51314|113
             <!-- ヘッダー -->
             <div class="px-3 py-2 flex items-center justify-between"
                  :style="isDark ? {background:'rgba(59,130,246,0.12)'} : {background:cat(editing.type).soft}">
-              <div class="text-[10px] font-black flex items-center gap-1.5" :style="{color: cat(editing.type).color}">
+              <div class="text-[10px] font-black flex items-center gap-1.5" :style="{color: ink(cat(editing.type).color)}">
                 <i class="fa-solid" :class="cat(editing.type).icon"></i>
                 {{ cat(editing.type).label }}のルート
                 <span class="text-[9px] font-medium text-slate-400 ml-1">（{{ editing.route.length }}{{ editing.type === 'bus' ? '停留所' : '駅' }}）</span>
               </div>
               <button @click="addStop()" class="tap text-[11px] font-bold px-2.5 py-1.5 rounded-lg text-white"
-                      :style="{background: cat(editing.type).color}">
+                      :style="{background: ink(cat(editing.type).color, '#ffffff')}">
                 <i class="fa-solid fa-plus mr-0.5"></i>{{ editing.type === 'bus' ? '停留所' : '駅' }}を追加
               </button>
             </div>
@@ -10450,7 +10499,7 @@ JA眉山GS前|34.03774|134.51314|113
             <!-- まだ駅が無いとき -->
             <div v-if="editing.route.length === 0" class="p-4 text-center">
               <button @click="addStop()" class="tap px-4 py-2.5 rounded-xl font-bold text-white text-sm shadow-md hover:opacity-90 transition"
-                      :style="{background: cat(editing.type).color}">
+                      :style="{background: ink(cat(editing.type).color, '#ffffff')}">
                 <i class="fa-solid fa-diagram-project mr-1.5"></i>経路をつくる
               </button>
               <div class="text-[10px] text-slate-400 mt-2.5 leading-relaxed">
@@ -10472,15 +10521,15 @@ JA眉山GS前|34.03774|134.51314|113
                   <div class="flex items-center gap-1.5 px-2.5 py-2"
                        :style="isDark ? {background:'rgba(15,23,42,0.5)'} : {background:'#f8fafc'}">
                     <span class="w-5 h-5 rounded-full grid place-items-center text-[9px] font-black shrink-0 text-white"
-                          :style="{background: si === 0 ? ANCHORS.start.color : (si === editing.route.length - 1 ? ANCHORS.end.color : '#94a3b8')}">
+                          :style="{background: si === 0 ? ink(ANCHORS.start.color, '#ffffff') : (si === editing.route.length - 1 ? ink(ANCHORS.end.color, '#ffffff') : '#64748b')}">
                       {{ si + 1 }}
                     </span>
                     <input v-model="st.name" :id="'stop-' + si" list="dl-station"
                            @keydown.enter.prevent="focusNextStop(si)"
                            :placeholder="si === 0 ? '出発する駅' : (si === editing.route.length - 1 ? '降りる駅' : '乗り換える駅')"
                            class="flex-1 min-w-0 rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-bold focus:border-indigo-400 outline-none" />
-                    <span v-if="si === 0" class="text-[9px] font-black shrink-0" :style="{color: ANCHORS.start.color}">出発</span>
-                    <span v-else-if="si === editing.route.length - 1" class="text-[9px] font-black shrink-0" :style="{color: ANCHORS.end.color}">到着</span>
+                    <span v-if="si === 0" class="text-[9px] font-black shrink-0" :style="{color: ink(ANCHORS.start.color)}">出発</span>
+                    <span v-else-if="si === editing.route.length - 1" class="text-[9px] font-black shrink-0" :style="{color: ink(ANCHORS.end.color)}">到着</span>
                     <button v-else @click="toggleThrough(st)"
                             :title="st.through ? '降りません（同じ列車のまま）。押すと乗換にします' : 'ここで降りて乗り換えます。押すと直通にします'"
                             class="tap shrink-0 text-[10px] font-black px-2 py-1 rounded-lg border transition"
@@ -10604,7 +10653,7 @@ JA眉山GS前|34.03774|134.51314|113
                     <div v-if="isTransferStop(editing.route, si) && transferMins(editing.route, si) !== null"
                          class="text-[10px] font-black flex items-center gap-1.5 px-2 py-1 rounded-lg"
                          :class="tightTransfer(editing.route, si)
-                           ? 'bg-rose-50 text-rose-600'
+                           ? 'bg-rose-50 text-rose-700'
                            : (isDark ? 'bg-slate-900/60 text-amber-300' : 'bg-amber-50 text-amber-700')">
                       <i class="fa-solid text-[9px]" :class="st.quick ? 'fa-right-left' : 'fa-arrows-rotate'"></i>
                       {{ (st.quick ? 'この駅で対面乗換　猶予 ' : 'この駅で乗り換え　猶予 ') + fmtMin(transferMins(editing.route, si)) }}
@@ -10627,7 +10676,7 @@ JA眉山GS前|34.03774|134.51314|113
                         <button @click="openTrainWizard(activeDay, si)" :disabled="!st.name"
                                 class="tap ml-auto text-[11px] font-black px-2.5 py-1.5 rounded-lg transition"
                                 :class="st.name ? 'text-white' : 'text-slate-400 cursor-not-allowed'"
-                                :style="st.name ? {background: cat(editing.type).color} : {background: isDark ? '#334155' : '#e2e8f0'}"
+                                :style="st.name ? {background: ink(cat(editing.type).color, '#ffffff')} : {background: isDark ? '#334155' : '#e2e8f0'}"
                                 title="時刻表から、路線・行先・列車を選ぶ">
                           <i class="fa-solid fa-magnifying-glass mr-0.5"></i>{{ editing.type === 'bus' ? '時刻表から便を選ぶ' : '時刻表から選ぶ' }}
                         </button>
@@ -10713,7 +10762,7 @@ JA眉山GS前|34.03774|134.51314|113
               <div class="flex items-center gap-1.5 pt-1">
                 <button @click="addStop()"
                         class="flex-1 py-1.5 rounded-lg border-2 border-dashed text-[11px] font-bold transition"
-                        :style="isDark ? {borderColor:'rgba(59,130,246,0.4)',color:cat(editing.type).color} : {borderColor:cat(editing.type).ring,color:cat(editing.type).color}">
+                        :style="isDark ? {borderColor:'rgba(59,130,246,0.4)',color: ink(cat(editing.type).color)} : {borderColor:cat(editing.type).ring,color: ink(cat(editing.type).color)}">
                   <i class="fa-solid fa-plus mr-1"></i>駅を追加
                 </button>
                 <button @click="fillTimesFromRoute()" title="最初の発時刻と最後の着時刻を、この予定の開始・終了に入れます"
@@ -10727,7 +10776,7 @@ JA眉山GS前|34.03774|134.51314|113
           <!-- 飛行機専用フィールド -->
           <div v-if="editing.type==='plane'" class="mb-3 p-3 rounded-xl border"
                :style="isDark ? {background:'rgba(99,102,241,0.08)',borderColor:'rgba(99,102,241,0.25)'} : {background:CATS.plane.soft,borderColor:CATS.plane.ring}">
-            <div class="text-[10px] font-black mb-2.5 flex items-center gap-1" :style="{color: CATS.plane.color}">
+            <div class="text-[10px] font-black mb-2.5 flex items-center gap-1" :style="{color: ink(CATS.plane.color)}">
               <i class="fa-solid fa-plane-departure"></i> 飛行機の情報
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -10875,7 +10924,7 @@ JA眉山GS前|34.03774|134.51314|113
                 </button>
               </div>
               <div class="w-8 h-8 rounded-lg grid place-items-center text-white shrink-0 text-xs font-black"
-                   :style="{ background: trip.id === currentTripId ? '#6366f1' : '#94a3b8' }">
+                   :style="{ background: trip.id === currentTripId ? '#4f46e5' : '#64748b' }">
                 {{ ti + 1 }}
               </div>
               <div class="flex-1 min-w-0">
@@ -10953,12 +11002,12 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="grid grid-cols-2 gap-2">
             <button @click="pickAdd('start')" data-focus-first
               class="tap rounded-xl py-2.5 text-sm font-bold border-2 transition hover:shadow-md flex items-center justify-center gap-2"
-              :style="{borderColor: ANCHORS.start.color, color: ANCHORS.start.color, background: isDark ? 'rgba(14,165,233,0.12)' : '#f0f9ff'}">
+              :style="{borderColor: ANCHORS.start.color, color: ink(ANCHORS.start.color), background: isDark ? 'rgba(14,165,233,0.12)' : '#f0f9ff'}">
               <i class="fa-solid" :class="ANCHORS.start.icon"></i>出発地点
             </button>
             <button @click="pickAdd('end')"
               class="tap rounded-xl py-2.5 text-sm font-bold border-2 transition hover:shadow-md flex items-center justify-center gap-2"
-              :style="{borderColor: ANCHORS.end.color, color: ANCHORS.end.color, background: isDark ? 'rgba(225,29,72,0.12)' : '#fff1f2'}">
+              :style="{borderColor: ANCHORS.end.color, color: ink(ANCHORS.end.color), background: isDark ? 'rgba(225,29,72,0.12)' : '#fff1f2'}">
               <i class="fa-solid" :class="ANCHORS.end.icon"></i>到着地点
             </button>
           </div>
@@ -10967,13 +11016,13 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="text-[11px] font-black text-slate-400 mt-4 mb-1.5">移動</div>
           <button @click="pickAdd('move')"
             class="tap w-full rounded-xl py-2.5 px-3 text-sm font-bold border-2 transition hover:shadow-md flex items-center gap-2"
-            :style="{borderColor:'#6366f1', color:'#6366f1', background: isDark ? 'rgba(99,102,241,0.14)' : '#eef2ff'}">
+            :style="{borderColor:'#6366f1', color: isDark ? '#a5b4fc' : '#4338ca', background: isDark ? 'rgba(99,102,241,0.14)' : '#eef2ff'}">
             <i class="fa-solid fa-route"></i>移動を追加
             <span class="text-[10px] font-medium opacity-70 ml-auto">2地点と手段を選ぶ</span>
           </button>
           <button @click="pickAdd('train')"
             class="tap mt-2 w-full rounded-xl py-2.5 px-3 text-sm font-bold border-2 transition hover:shadow-md flex items-center gap-2"
-            :style="{borderColor: CATS.train.color, color: CATS.train.color, background: isDark ? 'rgba(59,130,246,0.14)' : '#eaf1ff'}">
+            :style="{borderColor: CATS.train.color, color: ink(CATS.train.color), background: isDark ? 'rgba(59,130,246,0.14)' : '#eaf1ff'}">
             <i class="fa-solid fa-magnifying-glass"></i>時刻表から列車・バスを選ぶ
             <span class="text-[10px] font-medium opacity-70 ml-auto">駅／バス停→路線→行き先→便</span>
           </button>
@@ -10991,8 +11040,8 @@ JA眉山GS前|34.03774|134.51314|113
               :title="CATS[q.type].label + 'として追加'"
               class="tap px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border hover:shadow-sm"
               :style="isDark
-                ? {borderColor:'rgba(71,85,105,0.5)', background:'rgba(30,41,59,0.7)', color: CATS[q.type].color}
-                : {borderColor: CATS[q.type].ring, background: CATS[q.type].soft, color: CATS[q.type].color}">
+                ? {borderColor:'rgba(71,85,105,0.5)', background:'rgba(30,41,59,0.7)', color: ink(CATS[q.type].color, CATS[q.type].soft)}
+                : {borderColor: CATS[q.type].ring, background: CATS[q.type].soft, color: ink(CATS[q.type].color, CATS[q.type].soft)}">
               <i class="fa-solid text-[10px]" :class="CATS[q.type].icon"></i>{{ q.label }}
             </button>
           </div>
@@ -11046,7 +11095,7 @@ JA眉山GS前|34.03774|134.51314|113
             <div class="rounded-2xl border p-3" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
               <div class="flex items-end gap-2">
                 <label class="block w-[8rem] shrink-0">
-                  <span class="text-[11px] font-bold" :style="{color: ANCHORS.end.color}">
+                  <span class="text-[11px] font-bold" :style="{color: ink(ANCHORS.end.color)}">
                     <i class="fa-solid fa-clock mr-1"></i>出る時刻
                   </span>
                   <input type="time" v-model="moveWizard.fromTime" data-focus-first
@@ -11057,13 +11106,13 @@ JA眉山GS前|34.03774|134.51314|113
                   <div class="flex items-center gap-1 flex-wrap">
                     <button v-for="m in [30, 60, 120, 180]" :key="'st'+m" @click="stayFor(m)"
                       class="tap px-2 py-1 rounded-lg text-[11px] font-bold transition tabular-nums"
-                      :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'}">
+                      :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'}">
                       {{ fmtMin(m) }}
                     </button>
                   </div>
                 </div>
               </div>
-              <div v-if="wizardStay" class="text-[11px] font-bold mt-2" :style="{color: ANCHORS.end.color}">
+              <div v-if="wizardStay" class="text-[11px] font-bold mt-2" :style="{color: ink(ANCHORS.end.color)}">
                 <i class="fa-regular fa-clock mr-1"></i>ここでの滞在：{{ wizardStay }}
                 <span v-if="wizardSource && wizardSource.startTime" class="text-slate-400 font-medium">（{{ wizardSource.startTime }} 〜 {{ moveWizard.fromTime }}）</span>
               </div>
@@ -11091,7 +11140,7 @@ JA眉山GS前|34.03774|134.51314|113
                 <span class="text-[10px] font-bold text-slate-400 shrink-0">移動時間から決める</span>
                 <button v-for="m in [10, 20, 30, 60]" :key="'tv'+m" @click="travelFor(m)"
                   class="tap px-2 py-1 rounded-lg text-[11px] font-bold transition tabular-nums"
-                  :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'}">
+                  :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'}">
                   {{ fmtMin(m) }}
                 </button>
               </div>
@@ -11100,7 +11149,7 @@ JA眉山GS前|34.03774|134.51314|113
                 <button v-for="k in DEST_TYPES" :key="'dt'+k" @click="moveWizard.destType = k; moveWizard.asEnd = false"
                   class="tap px-2 py-1 rounded-lg text-[11px] font-bold border transition flex items-center gap-1"
                   :style="(!moveWizard.asEnd && moveWizard.destType === k)
-                    ? {borderColor: CATS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : CATS[k].soft, color: CATS[k].color}
+                    ? {borderColor: CATS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : CATS[k].soft, color: ink(CATS[k].color)}
                     : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f1f4f9', color:'#94a3b8'}">
                   <i class="fa-solid" :class="CATS[k].icon"></i>{{ CATS[k].label }}
                 </button>
@@ -11109,7 +11158,7 @@ JA眉山GS前|34.03774|134.51314|113
               <button @click="moveWizard.asEnd = !moveWizard.asEnd"
                 class="tap mt-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1.5"
                 :style="moveWizard.asEnd
-                  ? {borderColor: ANCHORS.end.color, color: ANCHORS.end.color, background: isDark ? 'rgba(225,29,72,0.12)' : '#fff1f2'}
+                  ? {borderColor: ANCHORS.end.color, color: ink(ANCHORS.end.color), background: isDark ? 'rgba(225,29,72,0.12)' : '#fff1f2'}
                   : {borderColor: isDark ? '#334155' : '#e2e8f0', background:'transparent', color:'#94a3b8'}">
                 <i class="fa-solid" :class="moveWizard.asEnd ? 'fa-square-check' : 'fa-square'"></i>
                 ここで1日を終える（宿・帰宅）
@@ -11127,9 +11176,9 @@ JA眉山GS前|34.03774|134.51314|113
                 :style="isDark
                   ? {borderColor:'rgba(71,85,105,0.5)', background:'rgba(30,41,59,0.7)'}
                   : {borderColor: CATS[k].ring, background: CATS[k].soft}">
-                <i class="fa-solid block text-base" :class="CATS[k].icon" :style="{color: CATS[k].color}"></i>
-                <span class="text-[10px] font-black mt-1 block leading-tight" :style="{color: CATS[k].color}">{{ CATS[k].label }}</span>
-                <span v-if="estFor(k)" class="block text-[10px] font-black tabular-nums mt-0.5" :style="{color: CATS[k].color}">
+                <i class="fa-solid block text-base" :class="CATS[k].icon" :style="{color: ink(CATS[k].color)}"></i>
+                <span class="text-[10px] font-black mt-1 block leading-tight" :style="{color: ink(CATS[k].color)}">{{ CATS[k].label }}</span>
+                <span v-if="estFor(k)" class="block text-[10px] font-black tabular-nums mt-0.5" :style="{color: ink(CATS[k].color)}">
                   約{{ fmtMin(estFor(k).min) }}
                 </span>
               </button>
@@ -11145,8 +11194,8 @@ JA眉山GS前|34.03774|134.51314|113
                   <i class="fa-solid fa-arrow-right text-[8px] text-slate-300"></i>
                   <span class="px-1.5 py-0.5 rounded"
                         :style="moveWizard.asEnd
-                          ? {background: isDark ? 'rgba(225,29,72,.15)' : '#ffe4e6', color: ANCHORS.end.color}
-                          : {background: isDark ? 'rgba(99,102,241,.15)' : CATS[moveWizard.destType].soft, color: CATS[moveWizard.destType].color}">
+                          ? {background: isDark ? 'rgba(225,29,72,.15)' : '#ffe4e6', color: ink(ANCHORS.end.color)}
+                          : {background: isDark ? 'rgba(99,102,241,.15)' : CATS[moveWizard.destType].soft, color: ink(CATS[moveWizard.destType].color)}">
                     {{ moveWizard.to }}<span v-if="moveWizard.toTime"> {{ nextMark({startTime: moveWizard.fromTime, endTime: moveWizard.toTime}) }}{{ moveWizard.toTime }}着</span>
                   </span>
                 </template>
@@ -11172,7 +11221,7 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="rounded-2xl border p-3" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
             <div class="flex items-end gap-2">
               <label class="block flex-1 min-w-0">
-                <span class="text-[11px] font-bold" :style="{color: ANCHORS.start.color}">
+                <span class="text-[11px] font-bold" :style="{color: ink(ANCHORS.start.color)}">
                   <i class="fa-solid mr-1" :class="ANCHORS.start.icon"></i>{{ moveWizard.mode === 'route' ? '出発地点' : 'どこから' }}
                 </span>
                 <input v-model="moveWizard.from" list="dl-station" placeholder="例：自宅 / 東京駅" data-focus-first
@@ -11194,7 +11243,7 @@ JA眉山GS前|34.03774|134.51314|113
             </div>
             <div class="flex items-end gap-2">
               <label class="block flex-1 min-w-0">
-                <span class="text-[11px] font-bold" :style="{color: ANCHORS.end.color}">
+                <span class="text-[11px] font-bold" :style="{color: ink(ANCHORS.end.color)}">
                   <i class="fa-solid mr-1" :class="ANCHORS.end.icon"></i>{{ moveWizard.mode === 'route' ? '到着地点' : 'どこまで' }}
                 </span>
                 <input v-model="moveWizard.to" list="dl-station" placeholder="例：京都駅前のホテル"
@@ -11220,9 +11269,9 @@ JA眉山GS前|34.03774|134.51314|113
               :style="isDark
                 ? {borderColor:'rgba(71,85,105,0.5)', background:'rgba(30,41,59,0.7)'}
                 : {borderColor: CATS[k].ring, background: CATS[k].soft}">
-              <i class="fa-solid block text-base" :class="CATS[k].icon" :style="{color: CATS[k].color}"></i>
-              <span class="text-[10px] font-black mt-1 block leading-tight" :style="{color: CATS[k].color}">{{ CATS[k].label }}</span>
-              <span v-if="estFor(k)" class="block text-[10px] font-black tabular-nums mt-0.5" :style="{color: CATS[k].color}">
+              <i class="fa-solid block text-base" :class="CATS[k].icon" :style="{color: ink(CATS[k].color)}"></i>
+              <span class="text-[10px] font-black mt-1 block leading-tight" :style="{color: ink(CATS[k].color)}">{{ CATS[k].label }}</span>
+              <span v-if="estFor(k)" class="block text-[10px] font-black tabular-nums mt-0.5" :style="{color: ink(CATS[k].color)}">
                 約{{ fmtMin(estFor(k).min) }}
               </span>
             </button>
@@ -11234,13 +11283,13 @@ JA眉山GS前|34.03774|134.51314|113
             <div class="flex items-center gap-1.5 flex-wrap">
               <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>できあがり：
               <template v-if="moveWizard.from">
-                <span class="px-1.5 py-0.5 rounded" :style="{background: isDark ? 'rgba(14,165,233,.15)' : '#e0f2fe', color: ANCHORS.start.color}">{{ moveWizard.from }}を出発</span>
+                <span class="px-1.5 py-0.5 rounded" :style="{background: isDark ? 'rgba(14,165,233,.15)' : '#e0f2fe', color: ink(ANCHORS.start.color)}">{{ moveWizard.from }}を出発</span>
                 <i class="fa-solid fa-arrow-right text-[8px] text-slate-300"></i>
               </template>
               <span class="px-1.5 py-0.5 rounded" :class="isDark ? 'bg-slate-700' : 'bg-slate-200'">選んだ移動</span>
               <template v-if="moveWizard.to">
                 <i class="fa-solid fa-arrow-right text-[8px] text-slate-300"></i>
-                <span class="px-1.5 py-0.5 rounded" :style="{background: isDark ? 'rgba(225,29,72,.15)' : '#ffe4e6', color: ANCHORS.end.color}">{{ moveWizard.to }}に到着</span>
+                <span class="px-1.5 py-0.5 rounded" :style="{background: isDark ? 'rgba(225,29,72,.15)' : '#ffe4e6', color: ink(ANCHORS.end.color)}">{{ moveWizard.to }}に到着</span>
               </template>
             </div>
             <button @click="buildRoute('')" class="tap mt-2 px-2 py-1.5 -ml-2 rounded-lg text-[11px] font-bold text-indigo-500 hover:underline hover:bg-indigo-500/10">
@@ -11288,7 +11337,7 @@ JA眉山GS前|34.03774|134.51314|113
             <button v-for="k in CAT_KEYS" :key="'cf'+k" @click="toggleCatFilter(k)"
               class="px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
               :style="catFilter.includes(k)
-                ? {borderColor: CATS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : CATS[k].soft, color: CATS[k].color}
+                ? {borderColor: CATS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : CATS[k].soft, color: ink(CATS[k].color)}
                 : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f1f4f9', color:'#94a3b8'}">
               <i class="fa-solid" :class="CATS[k].icon"></i>{{ CATS[k].label }}
             </button>
@@ -11296,7 +11345,7 @@ JA眉山GS前|34.03774|134.51314|113
             <button v-for="k in ['start','end']" :key="'af'+k" @click="toggleAnchorFilter(k)"
               class="px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
               :style="anchorFilter.includes(k)
-                ? {borderColor: ANCHORS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : '#f8fafc', color: ANCHORS[k].color}
+                ? {borderColor: ANCHORS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : '#f8fafc', color: ink(ANCHORS[k].color)}
                 : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f1f4f9', color:'#94a3b8'}">
               <i class="fa-solid" :class="ANCHORS[k].icon"></i>{{ ANCHORS[k].label }}
             </button>
@@ -11368,7 +11417,7 @@ JA眉山GS前|34.03774|134.51314|113
         <!-- いま -->
         <section v-if="dm.current" class="dm-card dm-card-now" aria-label="いまの予定">
           <div class="dm-label dm-label-now"><span class="dm-dot"></span>いま</div>
-          <div class="dm-title"><i class="fa-solid mr-1.5" :class="cat(dm.current.e.type).icon" :style="{ color: cat(dm.current.e.type).color }"></i>{{ dm.current.e.title }}</div>
+          <div class="dm-title"><i class="fa-solid mr-1.5" :class="cat(dm.current.e.type).icon" :style="{ color: ink(cat(dm.current.e.type).color) }"></i>{{ dm.current.e.title }}</div>
           <div class="dm-sub">{{ dmTime(dm.current.s) }} 〜 {{ dmTime(dm.current.end) }}<span class="dm-left">終わりまで {{ untilText(dm.current.end) }}</span></div>
 
           <!-- 乗っている途中：次に着く駅・乗る列車 -->
@@ -11415,7 +11464,7 @@ JA眉山GS前|34.03774|134.51314|113
             <div class="dm-big">{{ dmTime(dm.next.s) || '時刻なし' }}</div>
             <div v-if="dm.status === 'live'" class="dm-count pb-1.5">{{ untilText(dm.next.s) }}</div>
           </div>
-          <div class="dm-title mt-1"><i class="fa-solid mr-1.5" :class="cat(dm.next.e.type).icon" :style="{ color: cat(dm.next.e.type).color }"></i>{{ dm.next.e.title }}</div>
+          <div class="dm-title mt-1"><i class="fa-solid mr-1.5" :class="cat(dm.next.e.type).icon" :style="{ color: ink(cat(dm.next.e.type).color) }"></i>{{ dm.next.e.title }}</div>
           <!-- 乗る列車（最初の駅） -->
           <div v-if="dm.next.stops.length" class="dm-step">
             <div class="dm-step-main">{{ dm.next.stops[0].st.name }}<span v-if="dm.next.stops[0].dep !== null" class="dm-step-time">{{ dmTime(dm.next.stops[0].dep) }} 発</span>
@@ -11442,7 +11491,7 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="dm-label">このあと</div>
           <button v-for="x in dm.after" :key="'dma' + x.e.id" class="dm-row" @click="openEdit(dm.idx, x.e)">
             <span class="dm-row-t">{{ dmTime(x.s) }}</span>
-            <i class="fa-solid w-5 text-center" :class="cat(x.e.type).icon" :style="{ color: cat(x.e.type).color }"></i>
+            <i class="fa-solid w-5 text-center" :class="cat(x.e.type).icon" :style="{ color: ink(cat(x.e.type).color) }"></i>
             <span class="dm-row-title">{{ x.e.title }}<span v-if="x.e.location" class="dm-row-loc">{{ x.e.location }}</span></span>
           </button>
         </section>
@@ -11616,7 +11665,7 @@ JA眉山GS前|34.03774|134.51314|113
                  class="flex items-center gap-3 px-3 py-2 rounded-xl" :class="si % 2 ? '' : (isDark ? 'bg-slate-800/60' : 'bg-slate-50')">
               <div class="flex items-center gap-1 shrink-0 w-40">
                 <template v-for="(k, ki) in sc.keys" :key="'k'+si+ki">
-                  <kbd>{{ k }}</kbd><span v-if="ki < sc.keys.length-1" class="text-slate-300 text-[10px]">{{ sc.sep || '+' }}</span>
+                  <kbd>{{ k }}</kbd><span v-if="ki < sc.keys.length-1" class="text-slate-400 text-[10px]">{{ sc.sep || '+' }}</span>
                 </template>
               </div>
               <span class="text-xs font-bold text-slate-600 min-w-0">{{ sc.desc }}</span>
@@ -11636,7 +11685,7 @@ JA眉山GS前|34.03774|134.51314|113
               <li>・空の日は「<b class="text-ink">ルートを作る</b>」で、出発地点・移動・到着地点をまとめて作れます。</li>
               <li>・いちばん下の予定の「<b class="text-ink">ここから次へ</b>」で、滞在時間を決めて次の行き先へ続けられます。</li>
               <li>・日付を変更すると、<b class="text-ink">それ以降の日程も同じ日数だけ自動でずれます</b>。</li>
-              <li>・予定の時間が重なると、カードに <span class="text-amber-500 font-bold">重なり</span> の印と注意が出ます。</li>
+              <li>・予定の時間が重なると、カードに <span class="text-amber-600 font-bold">重なり</span> の印と注意が出ます。</li>
               <li>・時刻を変えた予定だけ、自動で時刻順の位置に移ります。自分で並べた順はそのまま残ります。</li>
               <li>・削除や並べ替えは <b class="text-ink">Ctrl+Z</b>（または画面下の知らせの「元に戻す」）で戻せます。</li>
               <li>・列車が遅れたら、カードの <b class="text-ink">⋯ → ここから後ろをずらす</b>。その予定より後ろを、乗換の時刻ごとまとめて動かします。</li>

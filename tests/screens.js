@@ -17,8 +17,6 @@ const SCREENS = [
   ['当日モード', A => { A.openDayMode(); }],
 ];
 
-const NEW_SCREENS = ['アップデート履歴', 'スマホで開く', '当日モード'];
-const ALL = process.argv.includes('--all');
 
 function contrastProbe() {
   const lum = (c) => { const v = c.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
@@ -54,7 +52,7 @@ function contrastProbe() {
     const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
     const size = parseFloat(st.fontSize), bold = Number(st.fontWeight) >= 700;
     const need = (size >= 24 || (size >= 18.66 && bold)) ? 3 : 4.5;
-    if (ratio < need) bad.push(`${ratio.toFixed(2)} 「${own.slice(0, 24)}」 ${st.color} on rgb(${bg.map(Math.round).join(',')})`);
+    if (ratio < need) bad.push(`${ratio.toFixed(2)} 「${own.slice(0, 24)}」 ${st.color} on rgb(${bg.map(Math.round).join(',')}) .${String(el.className).slice(0, 40)}`);
   });
   return bad;
 }
@@ -85,13 +83,10 @@ function contrastProbe() {
             return { sw: document.documentElement.scrollWidth, W, inner: ib && [Math.round(ib.left), Math.round(ib.right)], over: over.slice(0, 4) };
           });
           t.ok(r.sw <= r.W && !r.over.length && (!r.inner || (r.inner[0] >= -1 && r.inner[1] <= r.W + 1)), `${label}：はみ出さない`, r);
-          // コントラストは今回足した画面で見る（前からある画面の結果は node tests/screens.js --all で出す）
-          if (NEW_SCREENS.includes(name) || ALL) {
-            const bad = await page.evaluate(contrastProbe);
-            t.ok(!bad.length, `${label}：文字が背景に沈まない`, bad.slice(0, 5));
-          }
+          const bad = await page.evaluate(contrastProbe);
+          t.ok(!bad.length, `${label}：文字が背景に沈まない`, bad.slice(0, 5));
           t.ok(!page.errors.length, `${label}：エラーなし`, page.errors);
-          if (width === 390 && ['スマホで開く', '設定'].includes(name)) await page.screenshot({ path: path.join(OUT, `screen_${name}_${dark ? 'dark' : 'light'}.png`) });
+          if (width === 390 && ['スマホで開く', '設定', 'ふだんの画面', '予定の編集'].includes(name)) await page.screenshot({ path: path.join(OUT, `screen_${name}_${dark ? 'dark' : 'light'}.png`) });
           await page.close();
         }
       }
