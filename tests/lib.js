@@ -24,7 +24,7 @@ async function launch() {
 
 /* 新しいタブで開く。
    opts.storage … 開く前に localStorage へ入れておく {key: 値(文字列 or オブジェクト)}
-   opts.width/height/dark/online/now(ISO文字列＝時計を止める) */
+   opts.width/height/dark/online/now(ISO文字列＝時計を止める)/allow(通してよい URL の頭) */
 async function open(browser, opts = {}) {
   const url = await base();
   const page = await browser.newPage();
@@ -40,7 +40,7 @@ async function open(browser, opts = {}) {
     await page.setRequestInterception(true);
     page.on('request', req => {
       const u = req.url();
-      if (u.startsWith(url) || u.startsWith('data:') || u.startsWith('blob:')) req.continue();
+      if (u.startsWith(url) || u.startsWith('data:') || u.startsWith('blob:') || (opts.allow || []).some(x => u.startsWith(x))) req.continue();
       else req.abort('blockedbyclient');
     });
   }

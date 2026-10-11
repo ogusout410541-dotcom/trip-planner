@@ -36,7 +36,7 @@ t.ok(exposed.size > 300, '公開名を読み取れる', exposed.size);
 
 const used = new Set();
 code.replace(/_ctx\.([A-Za-z_$][\w$]*)/g, (_, n) => used.add(n));
-const missing = [...used].filter(n => !exposed.has(n));
+const missing = [...used].filter(n => !exposed.has(n) && !n.startsWith('$'));   // $nextTick など Vue の組み込みは使える
 t.ok(!missing.length, 'テンプレートが使う名前はすべて公開されている', missing);
 
 // v-for に :key が付いているか（並べ替え・削除で入力欄の中身が入れ替わる事故を防ぐ）

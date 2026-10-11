@@ -723,8 +723,14 @@ const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextT
 /* ---------- 版とアップデート履歴 ----------
    リリースのたびに APP_VERSION と sw.js の CACHE を同じ番号に上げ、CHANGELOG の先頭に1件足す。
    tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const CHANGELOG = [
+  { v: '1.2.0', date: '2026-10-12', title: 'クラウドに保存', items: [
+    ['new', 'クラウドに保存：直すたびに、自分の Google ドライブにも旅程を保存します。Cookie やサイトデータを消しても、合言葉を入れれば戻せます'],
+    ['new', 'ドライブには1日1つ、30日ぶんの過去の版が残ります'],
+    ['new', 'スマホも同じクラウドにつなぐと、PC とスマホで直したところが自動でそろいます'],
+    ['new', '旅程がひとつも無いときは、クラウドやバックアップのファイルから戻す案内を出します'],
+  ] },
   { v: '1.1.0', date: '2026-10-12', title: '旅の当日にスマホで使えるように', items: [
     ['new', '当日モード：いまの予定・次の予定・次の駅と乗換までの残り時間を大きく出します。遅れたときは、その予定から後ろの時刻をまとめてずらせます'],
     ['new', 'スマホで開く：旅程をリンクか QR コードにして、スマホへ送れます。スマホで一度開けば、圏外でも見られます'],
@@ -7490,10 +7496,10 @@ JA眉山GS前|34.03774|134.51314|113
       else if (str[0] !== 'r') throw new Error('形式が違います');
       return JSON.parse(new TextDecoder().decode(bytes));
     }
-    const share = reactive({ open: false, url: '', qr: '', busy: false, canShare: false });
+    const share = reactive({ open: false, url: '', qr: '', busy: false, canShare: false, kind: 'trip' });   // kind: trip＝旅程 / cloud＝クラウドの設定
     async function openShare() {
       persistCurrent();
-      share.open = true; share.busy = true; share.url = ''; share.qr = '';
+      share.open = true; share.busy = true; share.url = ''; share.qr = ''; share.kind = 'trip';
       try {
         const payload = { app: 'trip', v: 1, id: currentTripId.value, data: JSON.parse(JSON.stringify(state)) };
         share.url = shareBase() + '#trip=' + await packTrip(payload);
@@ -7570,6 +7576,299 @@ JA眉山GS前|34.03774|134.51314|113
     }
     function rejectIncoming() { incoming.open = false; incoming.data = null; clearIncomingHash(); }
 
+
+
+    /* ---------- クラウドに保存（自分の Google ドライブ。GAS のウェブアプリ） ----------
+       Cookie・サイトデータを消すと端末の旅程は置き場ごと消える。そこで、直すたびにドライブへも保存しておく
+       （クルナビの同期と同じ作り。GAS 側は gas/コード.gs）。
+       ・合言葉はサーバーに送らず、SHA-256 のハッシュ（k）だけを使う
+       ・送るのは全旅程と自宅の設定。最後にそろえたサーバーの時刻（updated）を添え、食い違えば競合
+       ・前回そろえた内容（base）を控え、「base→この端末」「base→サーバー」の変更を合わせる（merge3）
+       ・空の端末（Cookie を消した直後・新しいスマホ）は、送る前に必ず取り込む */
+    const LS_CLOUD = 'trip_cloud_v1';
+    const LS_CLOUD_BASE = 'trip_cloud_base_v1';
+    /* 自分の GAS の URL をここに入れておくと、Cookie を消したあとも合言葉だけで戻せる */
+    const CLOUD_URL_DEFAULT = '';
+    const CLOUD_WAIT = 4000;                // 直してから送るまでの待ち（打っている途中で送らない）
+    const cloud = reactive(Object.assign(
+      { url: '', phrase: '', updated: 0, lastAt: 0, code: '' },
+      (() => { try { return JSON.parse(localStorage.getItem(LS_CLOUD) || '{}'); } catch { return {}; } })(),
+      { busy: false, error: '', status: 'off', ask: null, form: false, formUrl: '', formPhrase: '', formShow: false, testing: false },
+    ));
+    const cloudOn = computed(() => !!(cloud.url && cloud.phrase));
+    function saveCloudConf() {
+      try { localStorage.setItem(LS_CLOUD, JSON.stringify({ url: cloud.url, phrase: cloud.phrase, updated: cloud.updated, lastAt: cloud.lastAt, code: cloud.code })); } catch {}
+    }
+    const saveCloudBase = (obj) => { try { localStorage.setItem(LS_CLOUD_BASE, JSON.stringify(obj)); } catch {} };
+    const loadCloudBase = () => { try { const t = localStorage.getItem(LS_CLOUD_BASE); return t ? JSON.parse(t) : null; } catch { return null; } };
+
+    /* URL の崩れ（全角・空白・改行・前後の文字・末尾の /）を取り除き、…/exec だけを抜き出す */
+    function normalizeCloudUrl(raw) {
+      const t = String(raw || '').replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[\s​　]+/g, '');
+      const m = t.match(/https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[A-Za-z0-9_-]{20,}\/(?:exec|dev)/)
+             || t.match(/http:\/\/127\.0\.0\.1:\d+\/macros\/s\/[A-Za-z0-9_-]+\/exec/);   // 検査用
+      return m ? m[0] : '';
+    }
+    async function cloudKey(phrase) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('trip:' + phrase));
+      return [...new Uint8Array(buf)].slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    const deviceLabel = () => /iPhone|iPad|Android/.test(navigator.userAgent || '') ? 'スマホ' : 'PC';
+    function cloudNiceError(e) {
+      const m = String((e && e.message) || e || '');
+      if (/応答が 404/.test(m)) return 'URL が見つかりませんでした。途中で切れているか、余分な文字が入っているかもしれません';
+      if (/応答が 40\d/.test(m)) return 'アクセスを断られました。GAS のデプロイを「アクセスできるユーザー：全員」にしてください';
+      if (/応答が 5\d\d/.test(m)) return 'サーバー側でエラーが出ています。少し待ってから、もう一度試してください';
+      if (/JSONではない/.test(m)) return 'GAS のウェブアプリの URL ではないようです（デプロイの画面に出る …/exec の URL を使ってください）';
+      if (/failed to fetch|networkerror|load failed|network/i.test(m)) return 'つながりませんでした。電波と URL を確かめてください';
+      return m || '保存できませんでした';
+    }
+    async function cloudFetch(url, init) {
+      const res = await fetch(url, Object.assign({ redirect: 'follow' }, init));
+      if (!res.ok) throw new Error('サーバーの応答が ' + res.status);
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { throw new Error('サーバーの応答がJSONではない'); }
+    }
+    const cloudGet = async (url, k) => cloudFetch(`${url}?k=${k}&t=${Date.now()}`, { method: 'GET' });
+    /* text/plain で送ると事前確認（preflight）が起きず、GAS でもそのまま受け取れる */
+    const cloudPost = async (url, body) => cloudFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    async function packJson(obj) {
+      const raw = new TextEncoder().encode(JSON.stringify(obj));
+      if (typeof CompressionStream === 'function') { try { return 'z' + b64u(await pipeBytes(raw, new CompressionStream('deflate-raw'))); } catch {} }
+      return 'r' + b64u(raw);
+    }
+
+    /* この端末の全旅程を、送る形にまとめる（normalizeData を通して形をそろえる） */
+    function cloudPayload() {
+      persistCurrent();
+      const trips = {};
+      const order = [];
+      tripIndex.value.forEach(t => {
+        try {
+          const raw = localStorage.getItem(tripKey(t.id));
+          if (!raw) return;
+          trips[t.id] = normalizeData(JSON.parse(raw));
+          order.push(t.id);
+        } catch {}
+      });
+      return { v: 1, order, trips, home: { place: home.place || '', station: home.station || '' } };
+    }
+    /* 中身のある旅程が1つでもあるか（空の端末かどうか） */
+    const payloadHasContent = (p) => !!p && Object.values(p.trips || {}).some(d => d.days.some(x => x.events.length) || (d.title && d.title !== '新しい旅程'));
+
+    /* まとめた形を、この端末に入れる（旅程の置き場と一覧を作り直す。開いている旅程は中身が変わったときだけ読み直す） */
+    function applyCloudPayload(p) {
+      cloudQuietUntil = Date.now() + 400;
+      const ids = (p.order || []).filter(id => p.trips && p.trips[id]);
+      Object.keys(p.trips || {}).forEach(id => { if (!ids.includes(id)) ids.push(id); });
+      const keep = new Set(ids);
+      tripIndex.value.forEach(t => { if (!keep.has(t.id)) { try { localStorage.removeItem(tripKey(t.id)); } catch {} } });
+      const summaries = [];
+      ids.forEach(id => {
+        const data = normalizeData(JSON.parse(JSON.stringify(p.trips[id])));
+        lsSet(tripKey(id), JSON.stringify(data));
+        summaries.push(tripSummary(id, data));
+      });
+      if (p.home) { home.place = p.home.place || home.place; home.station = p.home.station || ''; }
+      if (!summaries.length) return;
+      tripIndex.value = summaries;
+      const cur = keep.has(currentTripId.value) ? currentTripId.value : ids[0];
+      const raw = localStorage.getItem(tripKey(cur));
+      if (cur !== currentTripId.value || raw !== JSON.stringify(state)) {
+        const day = activeDay.value;
+        _applyTrip(cur, normalizeData(JSON.parse(raw)));
+        activeDay.value = Math.min(day, state.days.length - 1);
+      }
+      saveTripIndex();
+    }
+
+    /* 3方向マージ（クルナビの merge3 と同じ）。b＝前回そろえた内容、l＝この端末、r＝サーバー。
+       片方だけが変えたところはその変更を採る。id を持つものの配列（旅程・予定）は id ごとに合わせる。
+       両方が同じところを違う値にしたときだけ、この端末の値を残す */
+    const sameJson = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+    function merge3(b, l, r) {
+      if (sameJson(l, r)) return l;
+      if (b !== undefined && sameJson(b, l)) return r;
+      if (b !== undefined && sameJson(b, r)) return l;
+      if (isObj(l) && isObj(r)) {
+        const bb = isObj(b) ? b : {};
+        const out = {};
+        new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k => {
+          const inL = k in l, inR = k in r, inB = k in bb;
+          if (inL && inR) out[k] = merge3(inB ? bb[k] : undefined, l[k], r[k]);
+          else if (inL) { if (!(inB && sameJson(bb[k], l[k]))) out[k] = l[k]; }     // サーバーで消されたものは、こちらが変えていなければ消す
+          else if (!(inB && sameJson(bb[k], r[k]))) out[k] = r[k];                 // こちらで消したものは、サーバーが変えていなければ消したまま
+        });
+        return out;
+      }
+      if (Array.isArray(l) && Array.isArray(r)) {
+        const bb = Array.isArray(b) ? b : [];
+        const idd = (a) => a.every(x => isObj(x) && typeof x.id === 'string');
+        if (idd(l) && idd(r) && (l.length || r.length)) {
+          const byB = new Map(bb.filter(isObj).map(x => [x.id, x]));
+          const byR = new Map(r.map(x => [x.id, x]));
+          const out = [];
+          l.forEach(x => {
+            if (byR.has(x.id)) out.push(merge3(byB.get(x.id), x, byR.get(x.id)));
+            else if (!(byB.has(x.id) && sameJson(byB.get(x.id), x))) out.push(x);
+          });
+          const lIds = new Set(l.map(x => x.id));
+          r.forEach(x => { if (!lIds.has(x.id) && !(byB.has(x.id) && sameJson(byB.get(x.id), x))) out.push(x); });
+          return out;
+        }
+        const prim = (a) => a.every(x => x === null || typeof x !== 'object');
+        if (prim(l) && prim(r) && prim(bb)) {
+          const out = l.filter(x => r.includes(x) || !bb.includes(x));
+          r.forEach(x => { if (!l.includes(x) && !bb.includes(x) && !out.includes(x)) out.push(x); });
+          return out;
+        }
+        /* 日程（id の無い配列）は位置ごとに合わせる。日数が違えば、この端末の並びを残す */
+        if (l.length === r.length && bb.length === l.length) return l.map((x, i) => merge3(bb[i], x, r[i]));
+        return l;
+      }
+      return l;
+    }
+
+    /* 同期の本体。受け取って合わせ、変わっていれば送る */
+    async function cloudSync(opts = {}) {
+      if (!cloudOn.value || cloud.busy) return false;
+      if (!navigator.onLine) { cloud.status = 'offline'; return false; }
+      if (editing.value) { scheduleCloud(); return false; }     // 編集中は読み直さない（閉じてから）
+      cloud.busy = true; cloud.error = '';
+      try {
+        const k = await cloudKey(cloud.phrase);
+        for (let tries = 0; tries < 3; tries++) {
+          const srv = await cloudGet(cloud.url, k);
+          if (!srv || srv.app !== 'trip') throw new Error('サーバーの応答がJSONではない');
+          const local = cloudPayload();
+          let base = loadCloudBase();
+          let server = srv.data ? await unpackTrip(srv.data) : null;
+          let next;
+          if (!server) {
+            if (!payloadHasContent(local)) { cloud.status = 'ok'; break; }              // どちらも空
+            next = local;
+          } else if (!base || !cloud.updated) {
+            /* 初めてつなぐ端末：空ならそのまま取り込む。両方にあれば本人に選んでもらう */
+            if (!payloadHasContent(local) || opts.take === 'server') { applyCloudPayload(server); next = null; base = server; }
+            else if (opts.take === 'local') next = local;
+            else if (opts.take === 'merge') { next = merge3(undefined, local, server); applyCloudPayload(next); }
+            else { cloud.ask = { trips: Object.keys(server.trips || {}).length, at: srv.updated, device: srv.device }; cloud.status = 'ask'; return false; }
+            if (!next) { cloud.updated = srv.updated; saveCloudBase(server); cloud.lastAt = Date.now(); saveCloudConf(); cloud.status = 'ok'; break; }
+          } else if (srv.updated === cloud.updated) {
+            if (sameJson(base, local)) { cloud.status = 'ok'; break; }                   // 何も変わっていない
+            next = local;
+          } else {
+            next = merge3(base, local, server);
+            if (!sameJson(next, local)) applyCloudPayload(next);
+            if (sameJson(next, server)) { cloud.updated = srv.updated; saveCloudBase(server); cloud.lastAt = Date.now(); saveCloudConf(); cloud.status = 'ok'; break; }
+          }
+          const r = await cloudPost(cloud.url, { k, base: srv.updated, data: await packJson(next), device: deviceLabel() });
+          if (r && r.conflict) continue;                                              // そのあいだに別の端末が保存した＝もう一度合わせる
+          if (!r || !r.ok) throw new Error(r && r.error === 'large' ? '旅程が大きすぎて保存できませんでした' : '保存できませんでした');
+          cloud.updated = r.updated; saveCloudBase(next); cloud.lastAt = Date.now(); saveCloudConf();
+          cloud.status = 'ok';
+          break;
+        }
+        return cloud.status === 'ok';
+      } catch (e) {
+        cloud.status = navigator.onLine ? 'error' : 'offline';
+        cloud.error = cloudNiceError(e);
+        if (opts.manual) flash(cloud.error, 'fa-triangle-exclamation');
+        return false;
+      } finally {
+        cloud.busy = false;
+      }
+    }
+    let cloudTimer = 0;
+    let cloudQuietUntil = 0;                 // 取り込んだ直後は、中身の変化を自分の編集として数えない
+    function scheduleCloud(wait = CLOUD_WAIT) {
+      if (!cloudOn.value || Date.now() < cloudQuietUntil) return;
+      if (cloud.status === 'ok') cloud.status = 'pending';
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(() => cloudSync(), wait);
+    }
+    watch(state, () => scheduleCloud(), { deep: true });
+    watch(() => tripIndex.value.map(t => t.id).join(','), () => scheduleCloud());
+    watch(editing, (v) => { if (!v && cloudOn.value) scheduleCloud(800); });
+    window.addEventListener('online', () => cloudSync());
+    let lastCloudLook = 0;
+    document.addEventListener('visibilitychange', () => {
+      /* 画面に戻ってきたら、ほかの端末の変更を取り込む（前回から15秒以上あいていれば） */
+      if (document.visibilityState === 'visible' && Date.now() - lastCloudLook > 15000) { lastCloudLook = Date.now(); cloudSync(); }
+    });
+
+    /* 設定画面の「つなぐ」。保存する前に接続を確かめる */
+    function openCloudForm() {
+      cloud.formUrl = cloud.url || CLOUD_URL_DEFAULT;
+      cloud.formPhrase = cloud.phrase;
+      cloud.form = true;
+    }
+    async function connectCloud() {
+      const url = normalizeCloudUrl(cloud.formUrl);
+      const phrase = String(cloud.formPhrase || '').trim();
+      if (!url) { flash('GAS のウェブアプリの URL（…/exec で終わるもの）を貼ってください', 'fa-triangle-exclamation'); return; }
+      if (/\/dev$/.test(url)) { flash('「…/dev」の URL はテスト用です。デプロイの画面に出る「…/exec」の URL を使ってください', 'fa-triangle-exclamation'); return; }
+      if (phrase.length < 8) { flash('合言葉は8文字以上にしてください（ほかの人に当てられないように）', 'fa-triangle-exclamation'); return; }
+      cloud.testing = true;
+      try {
+        const r = await cloudGet(url, await cloudKey(phrase));
+        if (!r || r.app !== 'trip') throw new Error('サーバーの応答がJSONではない');
+      } catch (e) { cloud.testing = false; flash(cloudNiceError(e), 'fa-triangle-exclamation'); return; }
+      cloud.testing = false;
+      if (cloud.url !== url || cloud.phrase !== phrase) { cloud.updated = 0; try { localStorage.removeItem(LS_CLOUD_BASE); } catch {} }
+      cloud.url = url; cloud.phrase = phrase; cloud.code = (await cloudKey(phrase)).slice(0, 4).toUpperCase();
+      cloud.form = false;
+      saveCloudConf();
+      const ok = await cloudSync({ manual: true });
+      if (ok) flash('つながりました。これからは直すたびにクラウドにも保存します', 'fa-cloud');
+    }
+    async function cloudChoose(take) {
+      cloud.ask = null;
+      const ok = await cloudSync({ manual: true, take });
+      if (ok) flash(take === 'server' ? 'クラウドの旅程を取り込みました' : take === 'local' ? 'この端末の旅程をクラウドに保存しました' : '両方の旅程を合わせました', 'fa-cloud');
+    }
+    function disconnectCloud() {
+      if (!confirm('この端末のクラウド保存をやめますか？（クラウドの中身と、この端末の旅程はどちらも消えません）')) return;
+      cloud.url = ''; cloud.phrase = ''; cloud.updated = 0; cloud.code = ''; cloud.status = 'off'; cloud.ask = null;
+      try { localStorage.removeItem(LS_CLOUD); localStorage.removeItem(LS_CLOUD_BASE); } catch {}
+      flash('クラウド保存をやめました', 'fa-cloud');
+    }
+    /* スマホにも同じ設定を渡す（#cloud= のリンク。合言葉が入るので人に見せない） */
+    async function shareCloudConf() {
+      share.open = true; share.busy = true; share.url = ''; share.qr = ''; share.kind = 'cloud';
+      try {
+        share.url = shareBase() + '#cloud=' + await packTrip({ app: 'trip-cloud', url: cloud.url, phrase: cloud.phrase });
+        share.qr = (window.HC && window.HC.qr) ? (window.HC.qr.svg(share.url, { ecl: 'M', px: 260 }) || '') : '';
+        share.canShare = typeof navigator.share === 'function';
+      } catch { share.open = false; }
+      share.busy = false;
+    }
+    async function checkIncomingCloud() {
+      const m = location.hash.match(/^#cloud=([A-Za-z0-9_-]+)$/);
+      if (!m) return false;
+      clearIncomingHash();
+      try {
+        const o = await unpackTrip(m[1]);
+        if (!o || o.app !== 'trip-cloud' || !normalizeCloudUrl(o.url) || !o.phrase) throw new Error();
+        if (!confirm('クラウド保存の設定を受け取りますか？\nこの端末も、PC と同じクラウドに旅程を保存するようになります')) return true;
+        cloud.formUrl = o.url; cloud.formPhrase = o.phrase;
+        await connectCloud();
+      } catch { flash('リンクから設定を読み取れませんでした', 'fa-triangle-exclamation'); }
+      return true;
+    }
+    /* 「クラウドから戻す」：設定を開いて、URL と合言葉の欄まで動かす */
+    function openCloudRestore() {
+      showSettings.value = true;
+      openCloudForm();
+      /* 設定を開くと一番上の欄にフォーカスが当たってスクロールが戻るので、それが済んでから動かす */
+      setTimeout(() => {
+        const el = document.querySelector('[data-cloud-url]') || document.querySelector('[data-cloud]');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+        if (el && el.focus) el.focus({ preventScroll: true });
+      }, 350);
+    }
+    /* Cookie を消した直後など、旅程がひとつも無くクラウドにもつないでいないときに「戻す」を出す */
+    const showRestoreHint = computed(() => !cloudOn.value && !tripIndex.value.some(t => (t.eventCount || 0) > 0));
 
     /* ---------- オフライン（Service Worker） ----------
        公開ページ（https）で開いたときだけ登録する。localhost では古いキャッシュで混乱しないよう外しておく
@@ -8385,6 +8684,7 @@ JA眉山GS前|34.03774|134.51314|113
       if (showHelp.value) return 'help';
       if (changelog.open) return 'changelog';
       if (incoming.open) return 'incoming';
+      if (cloud.ask) return 'cloudask';
       if (share.open) return 'share';
       return '';
     });
@@ -8555,7 +8855,8 @@ JA眉山GS前|34.03774|134.51314|113
       maybeAutoBackup();
       registerSW();
       checkIncoming();
-      window.addEventListener('hashchange', checkIncoming);   // 開いているページにリンクを貼り直したとき
+      checkIncomingCloud().then(got => { if (!got && cloudOn.value) cloudSync(); });
+      window.addEventListener('hashchange', () => { checkIncoming(); checkIncomingCloud(); });   // 開いているページにリンクを貼り直したとき
       dayModeOnBoot();
       /* 更新してから初めて開いたときだけ、新しくなったことを出す（はじめて使う人には出さない） */
       try {
@@ -8594,6 +8895,7 @@ JA眉山GS前|34.03774|134.51314|113
       dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
       share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
       swState, swVersion, ink,
+      cloud, cloudOn, cloudSync, openCloudForm, connectCloud, cloudChoose, disconnectCloud, shareCloudConf, showRestoreHint, CLOUD_URL_DEFAULT, openCloudRestore,
       addDay, removeDay, openAdd, openEdit, saveEvent, deleteEvent, otherTab, reloadFromStore, storeChangedElsewhere,
       tryCloseEdit, closeEdit, discardEdit, discardAsk, editDirty,
       linkState, useLinkPlace, useLinkTime, pushNextStart, setEventPlace, shortName,
@@ -8671,6 +8973,10 @@ JA眉山GS前|34.03774|134.51314|113
               <span class="shrink-0">{{ state.days.length }}日間</span>
               <span class="text-slate-300 shrink-0">•</span>
               <span class="shrink-0">{{ eventCount }}件</span>
+              <span v-if="cloudOn" class="shrink-0" :title="cloud.status === 'error' ? 'クラウドに保存できていません：' + cloud.error : (cloud.status === 'offline' ? '圏外のため、まだクラウドに保存していません' : 'クラウドに保存しています')"
+                    :class="cloud.status === 'error' ? 'text-rose-600' : (cloud.status === 'offline' ? 'text-amber-600' : 'text-emerald-600')" data-cloud-mark>
+                <i class="fa-solid" :class="cloud.status === 'error' ? 'fa-triangle-exclamation' : 'fa-cloud'"></i><span v-if="cloud.status === 'error'"> 未保存</span>
+              </span>
             </div>
           </div>
 
@@ -8801,6 +9107,22 @@ JA眉山GS前|34.03774|134.51314|113
 
     <!-- ============ MAIN ============ -->
     <main class="px-3 sm:px-6 py-4 sm:py-5 max-w-5xl mx-auto">
+
+      <!-- ---------- 旅程がひとつも無いとき（Cookie を消した直後など）---------- -->
+      <div v-if="showRestoreHint" class="no-print mb-3 rounded-2xl border-2 px-3.5 py-3 flex items-start gap-2.5 flex-wrap"
+           :class="isDark ? 'border-indigo-500/40 bg-indigo-950/30' : 'border-indigo-200 bg-indigo-50'" data-restore>
+        <i class="fa-solid fa-cloud-arrow-down mt-0.5" :class="isDark ? 'text-indigo-300' : 'text-indigo-600'"></i>
+        <div class="flex-1 min-w-[14rem]">
+          <div class="text-sm font-black text-ink">前に作った旅程を戻せます</div>
+          <div class="text-xs text-slate-600 mt-0.5 leading-relaxed">クラウドに保存していたなら合言葉で、バックアップのファイルがあればそのファイルから戻せます。</div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button @click="openCloudRestore()"
+                  class="tap px-3 py-2 rounded-xl text-xs font-bold text-white shadow" style="background:linear-gradient(135deg,#6366f1,#a855f7)">クラウドから戻す</button>
+          <label class="tap px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 cursor-pointer">
+            ファイルから戻す<input type="file" accept="application/json,.json" class="hidden" @change="onImportFile"></label>
+        </div>
+      </div>
 
       <!-- ---------- 保存まわりの知らせ ---------- -->
       <div v-if="saveError || draftFound || otherTab" class="no-print space-y-2 mb-3">
@@ -9780,6 +10102,66 @@ JA眉山GS前|34.03774|134.51314|113
                 <span class="text-slate-400">（等倍）</span>
               </span>
             </div>
+          </div>
+
+          <!-- クラウドに保存（Cookie を消しても旅程が残るように） -->
+          <div class="mt-5 pt-4 border-t" :class="isDark ? 'border-slate-700' : 'border-slate-200'" data-cloud>
+            <div class="text-xs font-black text-ink flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-cloud text-indigo-400"></i>クラウドに保存（自分の Google ドライブ）
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed">
+              直すたびに、自分の Google ドライブにも保存します。Cookie やサイトデータを消しても、合言葉を入れれば戻せます。ドライブには1日1つ、30日ぶんの過去の版も残ります。
+            </p>
+            <template v-if="cloudOn && !cloud.form">
+              <div class="mt-2.5 rounded-xl px-3 py-2.5 text-xs font-bold flex items-center gap-2 flex-wrap"
+                   :class="cloud.status === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' : (cloud.status === 'offline' || cloud.status === 'ask' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200')">
+                <i class="fa-solid" :class="cloud.busy ? 'fa-spinner fa-spin' : (cloud.status === 'error' ? 'fa-triangle-exclamation' : 'fa-cloud')"></i>
+                <span class="flex-1 min-w-[12rem]">
+                  <template v-if="cloud.busy">保存しています</template>
+                  <template v-else-if="cloud.status === 'error'">保存できていません：{{ cloud.error }}</template>
+                  <template v-else-if="cloud.status === 'offline'">圏外です。つながったら保存します</template>
+                  <template v-else-if="cloud.status === 'ask'">この端末とクラウドの両方に旅程があります。どうするか選んでください</template>
+                  <template v-else-if="cloud.status === 'pending'">まもなく保存します</template>
+                  <template v-else>保存済み{{ cloud.lastAt ? '（' + new Date(cloud.lastAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '）' : '' }}</template>
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-1.5">確認コード <b class="text-ink tracking-widest">{{ cloud.code }}</b>（ほかの端末と同じなら、同じ置き場です）</div>
+              <div class="grid grid-cols-2 gap-2 mt-2">
+                <button @click="cloudSync({ manual: true })" :disabled="cloud.busy" class="py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2 disabled:opacity-50">
+                  <i class="fa-solid fa-rotate"></i>今すぐ保存</button>
+                <button @click="showSettings = false; shareCloudConf()" class="py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-mobile-screen-button"></i>スマホにも設定</button>
+              </div>
+              <div class="flex gap-3 mt-1.5">
+                <button @click="openCloudForm()" class="tap text-[11px] font-bold text-slate-500 hover:underline px-1 py-1">URL・合言葉を変える</button>
+                <button @click="disconnectCloud()" class="tap text-[11px] font-bold text-slate-500 hover:underline px-1 py-1">クラウド保存をやめる</button>
+              </div>
+            </template>
+            <template v-else>
+              <template v-if="cloud.form || !cloudOn">
+                <label class="block mt-2.5">
+                  <span class="text-[11px] font-bold text-slate-500">GAS のウェブアプリの URL（…/exec）</span>
+                  <input v-model="cloud.formUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false"
+                         class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono" data-cloud-url>
+                </label>
+                <label class="block mt-2">
+                  <span class="text-[11px] font-bold text-slate-500">合言葉（8文字以上。忘れないようにメモしてください）</span>
+                  <div class="mt-1 flex gap-1.5">
+                    <input v-model="cloud.formPhrase" :type="cloud.formShow ? 'text' : 'password'" autocomplete="off" autocapitalize="off" spellcheck="false"
+                           class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-sm" data-cloud-phrase @keydown.enter="connectCloud()">
+                    <button @click="cloud.formShow = !cloud.formShow" class="tap px-3 rounded-xl border border-slate-200 text-slate-500 text-xs font-bold" :aria-label="cloud.formShow ? '合言葉を隠す' : '合言葉を見る'">
+                      <i class="fa-solid" :class="cloud.formShow ? 'fa-eye-slash' : 'fa-eye'"></i></button>
+                  </div>
+                </label>
+                <button @click="connectCloud()" :disabled="cloud.testing" class="mt-2.5 w-full py-2.5 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                        style="background:linear-gradient(135deg,#6366f1,#a855f7)" data-cloud-connect>
+                  <i class="fa-solid" :class="cloud.testing ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'"></i>つないで保存する</button>
+                <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                  GAS の準備のしかたは、アプリのフォルダの「gas/デプロイ手順.md」にあります。前に保存していた旅程は、同じ URL と合言葉でつなぐと戻ります。
+                </p>
+                <button v-if="cloudOn" @click="cloud.form = false" class="tap text-[11px] font-bold text-slate-500 hover:underline px-1 py-1 mt-1">やめる</button>
+              </template>
+            </template>
           </div>
 
           <!-- 版 -->
@@ -11542,7 +11924,11 @@ JA眉山GS前|34.03774|134.51314|113
             <h2 class="font-black text-ink text-lg">スマホで開く</h2>
             <button @click="share.open=false" class="ml-auto w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="閉じる"><i class="fa-solid fa-xmark"></i></button>
           </div>
-          <p class="text-xs text-slate-600 leading-relaxed">
+          <p v-if="share.kind === 'cloud'" class="text-xs text-slate-600 leading-relaxed">
+            クラウド保存の設定をリンクにしました。スマホでこのリンクを開くと、スマホも同じクラウドに旅程を保存するようになり、PC の旅程も入ります。
+            <b class="text-rose-700">合言葉が入っているので、人には見せないでください。</b>
+          </p>
+          <p v-else class="text-xs text-slate-600 leading-relaxed">
             「{{ state.title }}」をリンクにしました。スマホでこのリンクを開くと、旅程がスマホに入ります。
             スマホで一度開いておけば、圏外でも見られます。
           </p>
@@ -11564,9 +11950,34 @@ JA眉山GS前|34.03774|134.51314|113
                 <i class="fa-solid fa-share-from-square"></i>ほかのアプリで送る</button>
             </div>
             <p class="text-[11px] text-slate-500 mt-3 leading-relaxed">
-              PCで直したあとは、もう一度リンクを作って開き直すと、スマホの旅程が新しい内容に置き換わります。
+              <template v-if="share.kind === 'cloud'">ホーム画面に追加したアプリで使うときは、アプリの設定の「クラウドに保存」で、同じ URL と合言葉を入れてください（Safari とホーム画面のアプリは保存場所が別です）。</template>
+              <template v-else>PCで直したあとは、もう一度リンクを作って開き直すと、スマホの旅程が新しい内容に置き換わります。</template>
             </p>
           </template>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ============ クラウドにつないだとき、両方に旅程がある ============ -->
+    <transition name="fade">
+      <div v-if="cloud.ask" data-modal="cloudask" role="dialog" aria-modal="true" aria-label="クラウドの旅程をどうするか" class="no-print fixed inset-0 z-[60] grid place-items-center p-4"
+           style="background:rgba(31,36,51,.45)">
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+             :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)"><i class="fa-solid fa-cloud"></i></div>
+            <h2 class="font-black text-ink text-lg">クラウドにも旅程があります</h2>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            この端末と、クラウド（{{ cloud.ask.trips }}件{{ cloud.ask.device ? '・最後に保存したのは ' + cloud.ask.device : '' }}）の両方に旅程があります。どうしますか？
+          </p>
+          <div class="grid gap-2 mt-4">
+            <button @click="cloudChoose('merge')" data-focus-first class="py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 transition" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              両方を合わせる（どちらの旅程も残す）</button>
+            <button @click="cloudChoose('server')" class="py-3 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition">クラウドの旅程にする（この端末のものは消えます）</button>
+            <button @click="cloudChoose('local')" class="py-3 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition">この端末の旅程でクラウドを上書きする</button>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-3 leading-relaxed">どれを選んでも、クラウドには1日1つ過去の版が残ります。</p>
         </div>
       </div>
     </transition>
