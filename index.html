@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>旅程プランナー — Trip Itinerary Studio</title>
 
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- FontAwesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-<!-- Vue 3 -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<!-- 部品は vendor/ に版を固定して同梱（配信元の更新で壊れない・圏外でも動く）。版を上げるときは vendor/README.md -->
+<!-- Tailwind CSS 3.4.17 -->
+<script src="vendor/tailwindcss-play-3.4.17.js"></script>
+<!-- FontAwesome 6.5.1 -->
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css" />
+<!-- Vue 3.5.43 -->
+<script src="vendor/vue.global.prod.js"></script>
 
 <script>
   tailwind.config = {
@@ -628,6 +629,27 @@
 <script>
 const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextTick } = Vue;
 
+/* ---------- 版とアップデート履歴 ----------
+   リリースのたびに APP_VERSION と sw.js の CACHE を同じ番号に上げ、CHANGELOG の先頭に1件足す。
+   tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
+const APP_VERSION = '1.1.0';
+const CHANGELOG = [
+  { v: '1.1.0', date: '2026-10-12', title: '壊れにくく、スマホでも使えるように', items: [
+    ['fix', '開いていた旅程のデータが壊れていると、旅程の一覧が「新しい旅程」1件だけになることがありました。いまは読めない旅程だけを控えに移し、ほかの旅程はそのまま残ります'],
+    ['fix', '印刷の「仕上がりを確かめる」で出る枚数と、実際に刷った枚数が1枚ずれることがありました'],
+    ['up', '画面の部品をアプリの中に入れました。読み込みが速くなり、インターネットにつながっていなくても開けます'],
+    ['new', '設定に版の番号と、この履歴を出しました'],
+  ] },
+  { v: '1.0.0', date: '2026-09-11', title: 'ここまでの版', items: [
+    ['new', '駅ごとの乗換・直通・番線を入れられる経路、時刻表からの列車えらび、所要時間の目安'],
+    ['new', '気になる点の点検と、その場で直せる案内'],
+    ['new', '紙に合わせて段と枚数を自動で決める印刷'],
+  ] },
+];
+const CHANGE_TAGS = { new: { label: '新機能', cls: 'bg-indigo-100 text-indigo-700' }, up: { label: '改善', cls: 'bg-emerald-100 text-emerald-700' }, fix: { label: '修正', cls: 'bg-amber-100 text-amber-800' } };
+/* '1.10.0' > '1.9.2' のように数字で比べる */
+const verCmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
+
 /* ---------- category config ---------- */
 const CATS = {
   /* ── 地点（そこに居る）── */
@@ -921,7 +943,11 @@ createApp({
     }
 
     /* ---------- データ正規化 ---------- */
+    /* 文字であるはずの欄に数や null が入っていたら文字にそろえる（古い版・手で直したJSONの保険） */
+    const asText = (o, keys) => keys.forEach(k => { if (typeof o[k] !== 'string') o[k] = (o[k] == null || typeof o[k] === 'object') ? '' : String(o[k]); });
+    const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
     function normalizeData(data) {
+      if (!isObj(data)) throw new Error('旅程のデータではありません');
       data.title ??= '新しい旅程';
       data.startDate ??= '';
       /* 同じ名前の場所がいくつもあるとき、この旅程ではどれを指すかを覚えておく
@@ -936,18 +962,22 @@ createApp({
       data.members = Math.max(1, Math.min(99, Math.round(Number(data.members) || 1)));
       /* 「これは指摘しなくていい」と決めた点検の控え */
       data.ignored = Array.isArray(data.ignored) ? data.ignored.filter(k => typeof k === 'string') : [];
+      asText(data, ['title', 'startDate', 'endDate', 'origin', 'destination']);
       if (!Array.isArray(data.days)) data.days = [];
+      data.days = data.days.filter(isObj);
       if (data.days.length === 0) data.days.push({ date: '', dayNumber: 1, events: [] });
       data.days.forEach((d, i) => {
-        d.date ??= '';
-        d.dayNumber ??= i + 1;
+        asText(d, ['date']);
+        d.dayNumber = i + 1;
         d.ignoreOverlap = !!d.ignoreOverlap;   // フェスの被りなど、重なりが正しい日もある
-        d.events = Array.isArray(d.events) ? d.events : [];
+        d.events = Array.isArray(d.events) ? d.events.filter(isObj) : [];
         d.events.forEach((e) => {
-          e.id ??= uid();
+          if (typeof e.id !== 'string' || !e.id) e.id = uid();
           e.type = CAT_KEYS.includes(e.type) ? e.type : (e.type === 'transport' ? 'train' : 'free_time');
           e.cost = Math.max(0, Number(e.cost) || 0);
-          ['startTime','endTime','title','location','notes','url','platform','direction','stations','flightNo','seat'].forEach(k => { e[k] ??= ''; });
+          asText(e, ['startTime','endTime','title','location','notes','url','platform','direction','stations','flightNo','seat']);
+          if (e.route != null && !Array.isArray(e.route)) e.route = [];
+          if (Array.isArray(e.route)) e.route = e.route.filter(isObj);
           e.crossOk = !!e.crossOk;          // 日をまたぐ予定だと確かめ済みか
           e.paid = !!e.paid;                // 出発前に払い終えているか（きっぷ・宿・チケット）
           e.anchor = ['start','end'].includes(e.anchor) ? e.anchor : '';
@@ -966,11 +996,11 @@ createApp({
             e.platform = ''; e.direction = ''; e.stations = '';
           }
           e.route.forEach((st, si) => {
-            st.name ??= '';
-            st.arrPlatform ??= ''; st.arrTime ??= '';   // この駅に着く
-            st.depPlatform ??= ''; st.depTime ??= '';   // この駅から出る
-            st.line ??= ''; st.dest ??= ''; st.stations ??= '';  // ここから乗る列車
-            st.kind ??= '';                  // 種別・列車名（快速・特急しおかぜ・エアポート急行 …）
+            asText(st, ['name',
+                        'arrPlatform', 'arrTime',        // この駅に着く
+                        'depPlatform', 'depTime',        // この駅から出る
+                        'line', 'dest', 'stations',      // ここから乗る列車
+                        'kind']);                        // 種別・列車名（快速・特急しおかぜ・エアポート急行 …）
             st.quick = !!st.quick;           // 対面乗換（同じホームの向かい側。1〜2分でも間に合う）
             /* true＝降りない（同じ列車のまま路線が変わる）。
                最初と最後の駅では意味を持たないので落とす */
@@ -990,24 +1020,61 @@ createApp({
       return normalizeData({ title, startDate: '', endDate: '', totalBudget: 0, days: [{ date: '', dayNumber: 1, events: [] }] });
     }
 
+    /* ---------- 壊れたデータからの復帰 ----------
+       開いている旅程が読めないとき、以前は一覧ごと「新しい旅程」1件に置き換えていた（ほかの旅程が見えなくなる）。
+       いまは読めない旅程だけを trip_broken_<id>_<日時> に退避して一覧から外し、残りはそのまま使う */
+    const LS_BROKEN = 'trip_broken_';
+    const brokenTrips = [];                 // 起動時に退避したもの（起動後に知らせる）
+    function stashBroken(id, raw) {
+      const key = LS_BROKEN + id + '_' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
+      try { localStorage.setItem(key, raw); localStorage.removeItem(tripKey(id)); brokenTrips.push(key); }
+      catch { brokenTrips.push(''); }     // 退避できなくても元の置き場は消さない
+    }
+    /* 1件読む。無ければ null、壊れていたら退避して false */
+    function readTrip(id) {
+      let raw = null;
+      try { raw = localStorage.getItem(tripKey(id)); } catch { return null; }
+      if (raw == null) return null;
+      try { return { raw, data: normalizeData(JSON.parse(raw)) }; }
+      catch { stashBroken(id, raw); return false; }
+    }
+    function tripSummary(id, data) {
+      return { id, title: data.title || '旅程', startDate: data.startDate, endDate: data.endDate,
+               origin: data.origin, destination: data.destination, status: data.status,
+               dayCount: data.days.length, eventCount: data.days.reduce((n, d) => n + d.events.length, 0) };
+    }
+    /* 一覧が壊れていたら、置き場にある旅程データから作り直す */
+    function rebuildIndex() {
+      const ids = [];
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('trip_data_')) ids.push(k.slice(10)); } } catch {}
+      return ids.sort().map(id => { const r = readTrip(id); return r ? tripSummary(id, r.data) : null; }).filter(Boolean);
+    }
+
     function loadInitial() {
       // 新形式（マルチ旅程）
-      try {
-        const idx = JSON.parse(localStorage.getItem(LS_TRIPS_IDX) || 'null');
-        const cid = localStorage.getItem(LS_CURRENT_ID) || '';
-        if (Array.isArray(idx) && idx.length > 0 && cid) {
-          tripIndex.value = idx;
-          currentTripId.value = cid;
-          const raw = localStorage.getItem(tripKey(cid));
+      let idx = null;
+      try { idx = JSON.parse(localStorage.getItem(LS_TRIPS_IDX) || 'null'); } catch { idx = undefined; }
+      if (idx !== null && !Array.isArray(idx)) idx = rebuildIndex();          // 一覧が壊れている
+      if (Array.isArray(idx)) idx = idx.filter(t => isObj(t) && typeof t.id === 'string' && t.id);
+      if (Array.isArray(idx) && idx.length > 0) {
+        let cid = '';
+        try { cid = localStorage.getItem(LS_CURRENT_ID) || ''; } catch {}
+        const order = [cid, ...idx.map(t => t.id).filter(id => id !== cid)].filter(Boolean);
+        const dropped = new Set();         // 壊れていて退避したもの
+        for (const id of order) {
+          const r = readTrip(id);
+          if (r === false) dropped.add(id);
+          if (!r) continue;
+          tripIndex.value = idx.filter(t => !dropped.has(t.id));
+          currentTripId.value = id;
           /* 読み込んだ中身を控えておく。
              あとで「置き場のいまは自分が書いたままか」を見分けるのに使う */
-          if (raw) { lastWritten = raw; return normalizeData(JSON.parse(raw)); }
-          for (const t of idx) {
-            const r = localStorage.getItem(tripKey(t.id));
-            if (r) { currentTripId.value = t.id; saveTripIndex(); lastWritten = r; return normalizeData(JSON.parse(r)); }
-          }
+          lastWritten = r.raw;
+          saveTripIndex();
+          return r.data;
         }
-      } catch {}
+        idx = idx.filter(t => !dropped.has(t.id));
+      }
 
       // 旧形式からマイグレーション
       try {
@@ -1027,12 +1094,12 @@ createApp({
         }
       } catch {}
 
-      // 新規（空白旅程）
+      // 新規（空白旅程）。読めない旅程があっても、一覧に残っているものは消さない
       const id = newTripId();
       const blank = _blankTrip();
-      tripIndex.value = [{ id, title: blank.title, startDate: '', endDate: '' }];
+      tripIndex.value = [...(Array.isArray(idx) ? idx : []), { id, title: blank.title, startDate: '', endDate: '' }];
       currentTripId.value = id;
-      localStorage.setItem(tripKey(id), JSON.stringify(blank));
+      try { localStorage.setItem(tripKey(id), JSON.stringify(blank)); } catch {}
       saveTripIndex();
       return blank;
     }
@@ -5897,6 +5964,10 @@ JA眉山GS前|34.03774|134.51314|113
     /* ---------- カードのメニュー / モーダル ---------- */
     const menuFor = ref('');
     const showHelp = ref(false);
+    /* アップデート履歴。since があれば、その版より新しいものに「NEW」を付ける */
+    const LS_SEEN_VER = 'trip_seen_version_v1';
+    const changelog = reactive({ open: false, since: '' });
+    function openChangelog(since = '') { changelog.since = since; changelog.open = true; }
     const showSearch = ref(false);
     const saveError = ref(false);
 
@@ -6133,6 +6204,9 @@ JA眉山GS前|34.03774|134.51314|113
         printPlan.cols = 1; printPlan.pages = 1; printPlan.measured = true;
         return printPlan;
       }
+      /* 締めの行は「出力：日時」が入ると高さが変わるので、空なら入れてから測る
+         （空のまま測ると、刷る直前に日時が入って最後の予定が次の紙へ押し出されていた） */
+      if (!printTime.value) printTime.value = stampText();
       /* 測るために、いったん1段で全部を組む */
       printPages.value = [{ k: 1, cols: [blocks] }];
       await nextTick();
@@ -6292,6 +6366,13 @@ JA眉山GS前|34.03774|134.51314|113
         if (!hasContent) return;
         downloadAllBackup(true);
       } catch {}
+    }
+    /* 起動時に退避した「読めなかった旅程」を、そのままファイルに書き出す（手で直して読み込み直せるように） */
+    const brokenCount = ref((() => { let n = 0; try { for (let i = 0; i < localStorage.length; i++) if ((localStorage.key(i) || '').startsWith(LS_BROKEN)) n++; } catch {} return n; })());
+    function downloadBroken() {
+      const out = {};
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS_BROKEN)) out[k] = localStorage.getItem(k); } } catch {}
+      _downloadText(JSON.stringify(out, null, 2), '読めなかった旅程_' + todayISO() + '.json');
     }
     /* バックアップの中身を、いまの旅程一覧に「追加」する（既存の旅程を上書きはしない） */
     function importBackupData(obj) {
@@ -7158,7 +7239,7 @@ JA眉山GS前|34.03774|134.51314|113
     function onScroll() { scrolled.value = window.scrollY > 8; }
 
     /* ---------- ダークモード ---------- */
-    const savedDark = localStorage.getItem('dark_mode');
+    const savedDark = (() => { try { return localStorage.getItem('dark_mode'); } catch { return null; } })();
     const isDark = ref(savedDark === null
       ? !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
       : savedDark === '1');
@@ -7823,17 +7904,16 @@ JA眉山GS前|34.03774|134.51314|113
 
     /* ---------- 印刷タイムスタンプ ---------- */
     const printTime = ref('');
+    const stampText = () => new Date().toLocaleString('ja-JP', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
     async function printNow() {
-      const now = new Date();
-      printTime.value = now.toLocaleString('ja-JP', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: false,
-      });
+      printTime.value = stampText();
       /* 開いているモーダルを閉じてから印刷 */
       editing.value = null;
       showJsonModal.value = false; showSettings.value = false;
-      showTripPanel.value = false; showHelp.value = false; showSearch.value = false;
+      showTripPanel.value = false; showHelp.value = false; showSearch.value = false; changelog.open = false;
       moveWizard.open = false; tw.open = false; fixDlg.open = false;
       menuFor.value = ''; addMenu.open = false; shiftMenuFor.value = -1;
       await nextTick();            // 印刷時刻がDOMへ反映されてから印刷する
@@ -7863,6 +7943,7 @@ JA眉山GS前|34.03774|134.51314|113
       if (showJsonModal.value) return 'json';
       if (showTripPanel.value) return 'trip';
       if (showHelp.value) return 'help';
+      if (changelog.open) return 'changelog';
       return '';
     });
     const FOCUS_FIRST = { edit: '[data-focus-first]', wizard: '[data-focus-first]', settings: '[data-focus-first]',
@@ -7909,7 +7990,7 @@ JA眉山GS前|34.03774|134.51314|113
       { keys: ['Esc'], desc: '開いているものを閉じる' },
     ];
     const isTyping = (t) => !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
-    const anyModal = () => !!(editing.value || showJsonModal.value || showSettings.value || showTripPanel.value || showHelp.value || moveWizard.open || addMenu.open);
+    const anyModal = () => !!(editing.value || showJsonModal.value || showSettings.value || showTripPanel.value || showHelp.value || changelog.open || moveWizard.open || addMenu.open);
 
     function onKeydown(e) {
       if (e.key === 'Escape') {
@@ -7925,6 +8006,7 @@ JA眉山GS前|34.03774|134.51314|113
         else if (showSettings.value) showSettings.value = false;
         else if (showTripPanel.value) showTripPanel.value = false;
         else if (showHelp.value) showHelp.value = false;
+        else if (changelog.open) changelog.open = false;
         else if (showSearch.value) showSearch.value = false;
         return;
       }
@@ -7973,12 +8055,7 @@ JA眉山GS前|34.03774|134.51314|113
     function onDocClick() { if (menuFor.value) { menuFor.value = ''; rippleFor.value = ''; } if (shiftMenuFor.value >= 0) shiftMenuFor.value = -1; }
 
     /* アプリの印刷ボタンを通さずに印刷された場合も出力時刻を埋める */
-    function stampPrintTime() {
-      printTime.value = new Date().toLocaleString('ja-JP', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-      });
-    }
+    function stampPrintTime() { printTime.value = stampText(); }
     onMounted(() => {
       document.addEventListener('keydown', onKeydown);
       document.addEventListener('click', onDocClick);
@@ -8030,6 +8107,17 @@ JA眉山GS前|34.03774|134.51314|113
       window.addEventListener('beforeprint', stampPrintTime);
       window.addEventListener('beforeprint', planPrint);
       maybeAutoBackup();
+      /* 更新してから初めて開いたときだけ、新しくなったことを出す（はじめて使う人には出さない） */
+      try {
+        const seen = localStorage.getItem(LS_SEEN_VER);
+        const used = tripIndex.value.some(t => (t.eventCount || 0) > 0);
+        if (seen ? verCmp(APP_VERSION, seen) > 0 : used) openChangelog(seen || '1.0.0');
+        localStorage.setItem(LS_SEEN_VER, APP_VERSION);
+      } catch {}
+      if (brokenTrips.length) {
+        flash(`読めない旅程が${brokenTrips.length}件ありました。中身は控えに残して、一覧から外しています`, 'fa-triangle-exclamation',
+              { label: '控えを書き出す', icon: 'fa-download', fn: downloadBroken });
+      }
     });
     onUnmounted(() => {
       document.removeEventListener('keydown', onKeydown);
@@ -8051,7 +8139,8 @@ JA眉山GS前|34.03774|134.51314|113
       isRouteText, redundantLocation,
       totalActual, totalPaid, totalUnpaid, dayTotal, dayUnpaid, eventCount, budgetPct, overBudget, hasBudget, members, perPerson,
       copyJson, downloadJson, pullToEditor, persistCurrent, saveError,
-      downloadAllBackup, onImportFile, lastBackupAt,
+      downloadAllBackup, onImportFile, lastBackupAt, brokenCount, downloadBroken,
+      APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog,
       addDay, removeDay, openAdd, openEdit, saveEvent, deleteEvent, otherTab, reloadFromStore, storeChangedElsewhere,
       tryCloseEdit, closeEdit, discardEdit, discardAsk, editDirty,
       linkState, useLinkPlace, useLinkTime, pushNextStart, setEventPlace, shortName,
@@ -9020,7 +9109,8 @@ JA眉山GS前|34.03774|134.51314|113
           <!-- フッター（最後の紙だけ） -->
           <div v-if="pgi === printPages.length - 1" class="ptl-foot">
             <span>合計実績：{{ yen(totalActual) }}<span v-if="totalPaid > 0">（支払い済 {{ yen(totalPaid) }}／当日 {{ yen(totalUnpaid) }}）</span>　／　予算：{{ yen(state.totalBudget) }}<span v-if="members > 1">　／　1人あたり：{{ yen(perPerson) }}</span></span>
-            <span class="ptl-foot-time">出力：{{ printTime }}<span v-if="printPages.length > 1">　（{{ pgi + 1 }}/{{ printPages.length }}）</span></span>
+            <!-- ページ番号は1枚のときも幅だけ取っておく（測ったときと刷るときで行の高さを変えないため） -->
+            <span class="ptl-foot-time">出力：{{ printTime }}<span :style="printPages.length > 1 ? null : { visibility: 'hidden' }">　（{{ pgi + 1 }}/{{ printPages.length }}）</span></span>
           </div>
         </div>
         </div>
@@ -9626,6 +9716,17 @@ JA眉山GS前|34.03774|134.51314|113
             <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
               復元は「追加」されます（今ある旅程は消えません）。復元した旅程は、旅程の管理から開けます
             </p>
+            <div v-if="brokenCount" class="mt-3 rounded-xl px-3 py-2.5 text-xs font-bold flex items-center gap-2 flex-wrap bg-amber-50 text-amber-800 border border-amber-200">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span class="flex-1 min-w-[10rem]">読めなかった旅程の控えが {{ brokenCount }} 件あります</span>
+              <button @click="downloadBroken()" class="px-3 py-1.5 rounded-lg bg-white border border-amber-300 hover:bg-amber-100">控えを書き出す</button>
+            </div>
+          </div>
+
+          <!-- 版 -->
+          <div class="mt-5 pt-4 border-t flex items-center gap-2 flex-wrap" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
+            <span class="text-xs font-black text-ink"><i class="fa-solid fa-code-branch text-indigo-400 mr-1"></i>バージョン v{{ APP_VERSION }}</span>
+            <button @click="openChangelog()" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
           </div>
         </div>
       </div>
@@ -10807,6 +10908,42 @@ JA眉山GS前|34.03774|134.51314|113
               <span v-if="r.ev.cost > 0" class="text-[11px] font-black text-slate-500 tabular-nums shrink-0">{{ yen(r.ev.cost) }}</span>
               <i class="fa-solid fa-arrow-right text-slate-300 text-xs shrink-0"></i>
             </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ============ アップデート履歴 ============ -->
+    <transition name="fade">
+      <div v-if="changelog.open" data-modal="changelog" role="dialog" aria-modal="true" aria-label="アップデート履歴" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
+           style="background:rgba(31,36,51,.45)" @click.self="changelog.open=false">
+        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+             :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
+                 style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <h2 class="font-black text-ink text-lg">{{ changelog.since ? '新しくなったこと' : 'アップデート履歴' }}</h2>
+            <button @click="changelog.open=false" class="ml-auto w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="閉じる">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <section v-for="c in CHANGELOG" :key="'cl'+c.v">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="font-black text-ink">v{{ c.v }}</span>
+                <span class="text-[11px] text-slate-500">{{ c.date }}</span>
+                <span v-if="changelog.since && verCmp(c.v, changelog.since) > 0" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500 text-white">NEW</span>
+              </div>
+              <div class="text-xs font-bold text-slate-600 mt-0.5">{{ c.title }}</div>
+              <ul class="mt-2 space-y-1.5">
+                <li v-for="(it, ii) in c.items" :key="'cli'+c.v+ii" class="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
+                  <span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded" :class="CHANGE_TAGS[it[0]].cls">{{ CHANGE_TAGS[it[0]].label }}</span>
+                  <span class="min-w-0">{{ it[1] }}</span>
+                </li>
+              </ul>
+            </section>
           </div>
         </div>
       </div>

@@ -1,0 +1,9 @@
+{
+  "name": "trip-itinerary-tests",
+  "private": true,
+  "description": "旅程プランナーの検証道具（node tests/run.js で全部まわる）",
+  "dependencies": {
+    "@vue/compiler-dom": "^3.5.13",
+    "puppeteer-core": "^24.43.1"
+  }
+}
