@@ -130,6 +130,13 @@ CSS の改ページ任せはやめた。`planPrint()`（async）が ①かたま
 - **リリースのたびに `APP_VERSION`（index.html）・`CACHE`（sw.js）を同じ番号に上げ、`CHANGELOG` の先頭に1件足す**（tag: new / up / fix、使う人の言葉で）。`tests/version.js` がずれを見張る
 - 新しい版を取り込んでも勝手に読み込み直さない（知らせの「読み込み直す」で本人が切り替える）
 
+## 公開（GitHub Pages）
+
+- 公開URL：https://ogusout410541-dotcom.github.io/trip-planner/（リポジトリ `ogusout410541-dotcom/trip-planner`、main の / を配信。2026-10-12 公開）
+- 手順：版を上げる（APP_VERSION・sw.js の CACHE・CHANGELOG）→ `node tests/run.js` → コミット → `git push`
+  → `https://…/trip-planner/sw.js` の CACHE が新しい版になるまで待つ → `node tests/_live.js` で本番を確かめる（版・SW の一式・圏外・リンクの受け取り）
+- push は外に出る操作なので、本人の指示を受けてから
+
 ## テスト
 
 `cd tests && npm install`（初回だけ）→ `node tests/run.js`（全部、約2分）／`node tests/run.js print flow`（一部）。Chrome は `C:\Program Files\Google\Chrome\Application\chrome.exe`。外部の通信は既定で止めている（結果が日によって変わらないように）。
@@ -154,4 +161,4 @@ CSS の改ページ任せはやめた。`planPrint()`（async）が ①かたま
 ## 既知の課題・次の候補
 
 - スマホ幅ではヘッダーから「バックアップと書き出し」「明暗の切り替え」を外し、設定から開く形にした
-- 公開先（GitHub Pages）が決まったら `SITE_URL` を合わせ、実機（iPhone）でホーム画面に追加・圏外・Wake Lock を確かめる
+- 実機（iPhone）で、ホーム画面に追加・機内モードで開く・当日モードで画面が消えないこと、はまだ確かめていない
