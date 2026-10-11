@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>旅程プランナー — Trip Itinerary Studio</title>
+<!-- スマホのホーム画面に置いて、圏外でも開けるように（sw.js） -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#6366f1" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="旅程" />
 
 <!-- 部品は vendor/ に版を固定して同梱（配信元の更新で壊れない・圏外でも動く）。版を上げるときは vendor/README.md -->
 <!-- Tailwind CSS 3.4.17 -->
@@ -12,6 +19,8 @@
 <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css" />
 <!-- Vue 3.5.43 -->
 <script src="vendor/vue.global.prod.js"></script>
+<!-- QRコード（クルナビと同じ自作の部品。外部ライブラリなし） -->
+<script src="vendor/qr.js"></script>
 
 <script>
   tailwind.config = {
@@ -607,6 +616,72 @@
   }
   .ptl-foot-time { font-size: 5.5pt; font-weight: 400; color: #94a3b8; }
 
+
+
+  /* ---------- 当日モード ---------- */
+  .dm { --dm-bg: #f3f5fa; --dm-card: #ffffff; --dm-ink: #111827; --dm-sub: #475569; --dm-line: #e2e8f0;
+        --dm-accent: #4338ca; --dm-now: #047857; --dm-now-soft: #ecfdf5; --dm-warn: #b45309; --dm-chip: #eef2ff;
+        background: var(--dm-bg); color: var(--dm-ink); font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body.dark .dm { --dm-bg: #0b1120; --dm-card: #131c2e; --dm-ink: #f1f5f9; --dm-sub: #cbd5e1; --dm-line: #334155;
+        --dm-accent: #a5b4fc; --dm-now: #34d399; --dm-now-soft: #052e22; --dm-warn: #fbbf24; --dm-chip: #1e1b4b; }
+  .dm-top { display: flex; align-items: center; gap: 12px; }
+  .dm-clock { flex: 1; text-align: center; font-weight: 900; font-size: 44px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+  .dm-sec { font-size: 20px; margin-left: 4px; color: var(--dm-sub); }
+  .dm-icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--dm-card); color: var(--dm-sub);
+             border: 1px solid var(--dm-line); flex: 0 0 auto; }
+  .dm-icon:disabled { opacity: .35; }
+  .dm-icon-on { background: #fde68a; color: #78350f; border-color: #f59e0b; }
+  .dm-icon-s { width: 40px; height: 40px; }
+  .dm-dayline { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; }
+  .dm-dayname { font-weight: 900; font-size: 18px; }
+  .dm-trip { font-size: 12px; color: var(--dm-sub); font-weight: 700; }
+  .dm-note { display: flex; gap: 8px; align-items: flex-start; background: var(--dm-card); border: 1px solid var(--dm-line); border-radius: 16px;
+             padding: 12px 14px; font-size: 14px; font-weight: 700; color: var(--dm-sub); margin-bottom: 12px; }
+  .dm-note i { margin-top: 3px; }
+  .dm-card { background: var(--dm-card); border: 1px solid var(--dm-line); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px -14px rgba(15,23,42,.35); }
+  .dm-card-now { border: 2px solid var(--dm-now); }
+  .dm-label { font-size: 12px; font-weight: 900; letter-spacing: .08em; color: var(--dm-sub); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .dm-label-now { color: var(--dm-now); }
+  .dm-label-btn { background: none; border: 0; padding: 4px 0; min-height: 32px; }
+  .dm-dot { width: 9px; height: 9px; border-radius: 99px; background: var(--dm-now); }
+  .dm-title { font-size: 20px; font-weight: 900; line-height: 1.35; overflow-wrap: anywhere; }
+  .dm-sub { font-size: 14px; font-weight: 700; color: var(--dm-sub); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-variant-numeric: tabular-nums; }
+  .dm-left { color: var(--dm-now); }
+  .dm-big { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .dm-count { font-size: 18px; font-weight: 900; color: var(--dm-accent); font-variant-numeric: tabular-nums; }
+  .dm-step { margin-top: 12px; padding: 12px; border-radius: 14px; background: var(--dm-chip); }
+  .dm-card-now .dm-step { background: var(--dm-now-soft); }
+  .dm-step-head { font-size: 12px; font-weight: 900; color: var(--dm-sub); }
+  .dm-step-main { font-size: 22px; font-weight: 900; line-height: 1.3; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; overflow-wrap: anywhere; }
+  .dm-step-time { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .dm-step-then { font-size: 15px; font-weight: 800; margin-top: 4px; overflow-wrap: anywhere; }
+  .dm-step-xfer { color: var(--dm-warn); }
+  .dm-plat { display: inline-block; font-size: 15px; font-weight: 900; padding: 1px 8px; border-radius: 8px; border: 2px solid currentColor; }
+  .dm-stops { margin-top: 10px; border-left: 3px solid var(--dm-line); padding-left: 12px; display: grid; gap: 6px; }
+  .dm-stops li { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 700; }
+  .dm-stop-name { min-width: 0; overflow-wrap: anywhere; }
+  .dm-stop-t { color: var(--dm-sub); text-align: right; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; flex: 0 0 auto; }
+  .dm-stop-hit, .dm-stop-hit .dm-stop-t { color: var(--dm-accent); }
+  .dm-stop-past { opacity: .55; }
+  .dm-place { font-size: 14px; font-weight: 700; color: var(--dm-sub); margin-top: 8px; overflow-wrap: anywhere; }
+  .dm-notes { font-size: 13px; color: var(--dm-sub); margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .dm-list { margin-top: 18px; }
+  .dm-row { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--dm-card); border: 1px solid var(--dm-line);
+            border-radius: 14px; padding: 10px 12px; margin-bottom: 6px; min-height: 48px; color: var(--dm-ink); }
+  .dm-row-t { font-weight: 900; font-variant-numeric: tabular-nums; width: 4.2em; flex: 0 0 auto; font-size: 15px; }
+  .dm-row-title { min-width: 0; font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+  .dm-row-loc { display: block; font-size: 12px; font-weight: 700; color: var(--dm-sub); }
+  .dm-row-done { opacity: .6; }
+  .dm-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--dm-bg);
+            border-top: 1px solid var(--dm-line); }
+  .dm-bar > * { max-width: 36rem; margin-left: auto; margin-right: auto; }
+  .dm-act { min-height: 56px; border-radius: 16px; background: var(--dm-card); border: 1px solid var(--dm-line); color: var(--dm-ink);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 900; }
+  .dm-act i { font-size: 18px; color: var(--dm-accent); }
+  .dm-act:disabled, .dm-act-off { opacity: .4; pointer-events: none; }
+  .dm-delay { margin-bottom: 10px; }
+  .dm-delay-head { font-size: 13px; font-weight: 800; color: var(--dm-sub); margin-bottom: 6px; overflow-wrap: anywhere; }
+  .dm-delay-btn { min-height: 48px; border-radius: 12px; background: var(--dm-chip); color: var(--dm-ink); font-weight: 900; font-size: 15px; border: 1px solid var(--dm-line); }
 
   /* ---------- PRINT ---------- */
   @media print {
@@ -7191,6 +7266,315 @@ JA眉山GS前|34.03774|134.51314|113
             'fa-clock-rotate-left', { label: '元に戻す', fn: undo });
     }
 
+    /* ---------- 当日モード（旅の最中にスマホで見る画面） ----------
+       「いま」と「次」と「乗換までの残り時間」を大きく出す。編集はせず、遅れの反映だけここでできる。
+       開いていたかどうかは端末ごとに覚える（同じ旅程でも PC は計画、スマホは当日、のように使い分けるため） */
+    const LS_DAYMODE = 'trip_day_mode_v1';
+    const LS_DAYASK = 'trip_day_ask_v1';    // 「今日は旅程の日です」を聞いた日（1日1回だけ聞く）
+    const dayMode = reactive({ on: false, pick: -1, wake: false, delayOpen: false, doneOpen: false });
+    const nowTick = ref(Date.now());
+    let nowTimer = 0;
+    function startClock() { nowTick.value = Date.now(); if (!nowTimer) nowTimer = setInterval(() => { nowTick.value = Date.now(); }, 1000); }
+    function stopClock() { clearInterval(nowTimer); nowTimer = 0; }
+
+    /* 1日の予定を「その日の0時からの通しの分」に並べる。
+       23:30 のあとに 00:40 と書いてあれば 24:40、30:00 はそのまま 30:00（翌6時）として数える。
+       経路の駅の時刻も同じ物差しにそろえる */
+    function dayTimeline(day) {
+      /* ref より6時間以上前に戻っていたら翌日とみなす（30:00 のような書き方はそのまま） */
+      const fix = (t, ref, slack = 360) => {
+        let m = toMin(t);
+        if (m === null) return null;
+        if (ref !== null) while (m < ref - slack) m += 1440;
+        return m;
+      };
+      let prev = null;
+      const items = day.events.map((e, i) => {
+        const s = fix(e.startTime, prev);
+        const en = fix(e.endTime, s !== null ? s : prev, 0);   // 終わりが始まりより前＝日をまたぐ
+        if (s !== null) prev = s;
+        let ref = s;
+        const stops = routeStops(e).map(st => {
+          const arr = fix(st.arrTime, ref); if (arr !== null) ref = arr;
+          const dep = fix(st.depTime, ref); if (dep !== null) ref = dep;
+          return { st, arr, dep };
+        });
+        return { e, i, s, en, stops };
+      });
+      /* 終わりが書いていない予定は、次の予定の始まりまで（最後なら1時間）続くとみなす */
+      items.forEach((x, k) => {
+        if (x.s === null) { x.end = null; return; }
+        const lastStop = x.stops.length ? x.stops[x.stops.length - 1] : null;
+        const nx = items.slice(k + 1).find(y => y.s !== null);
+        x.end = x.en !== null ? x.en
+          : (lastStop && lastStop.arr !== null) ? lastStop.arr
+          : (MOMENT_TYPES.includes(x.e.type) ? x.s : (nx ? Math.max(x.s, nx.s) : x.s + 60));
+      });
+      return items;
+    }
+    const nowParts = () => { const d = new Date(nowTick.value); return { iso: toISO(d), min: d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60 }; };
+
+    /* 当日モードで見る日と、その日の「いま・次」 */
+    const dm = computed(() => {
+      const { iso, min } = nowParts();
+      const days = state.days;
+      const rel = (d) => d.date ? diffDays(d.date, iso) * 1440 + min : null;   // その日の0時から見た「いま」
+      const lines = days.map(d => dayTimeline(d));
+      const span = (k) => { const ts = lines[k].filter(x => x.s !== null); return ts.length ? [ts[0].s, Math.max(...ts.map(x => x.end))] : null; };
+      let idx = -1;
+      if (dayMode.pick >= 0 && dayMode.pick < days.length) idx = dayMode.pick;
+      if (idx < 0) idx = days.findIndex((d, k) => { const r = rel(d), sp = span(k); return r !== null && sp && r >= sp[0] - 180 && r <= sp[1] + 120; });
+      if (idx < 0) idx = days.findIndex(d => d.date === iso);
+      if (idx < 0) idx = days.findIndex(d => d.date && d.date > iso);
+      if (idx < 0) idx = days.length - 1;
+      const day = days[idx];
+      const r = rel(day);
+      const items = lines[idx];
+      const status = r === null ? 'nodate' : (day.date > iso && !(span(idx) && r >= span(idx)[0] - 180)) ? 'before' : 'live';
+      const first = days.find(d => d.date);
+      const lastDay = [...days].reverse().find(d => d.date);
+      const tripOver = !!(lastDay && lastDay.date < iso && (() => { const k = days.indexOf(lastDay); const sp = span(k); return !sp || rel(lastDay) > sp[1] + 120; })());
+      let current = null, next = null;
+      if (r !== null && status === 'live') {
+        const timed = items.filter(x => x.s !== null);
+        current = [...timed].reverse().find(x => x.s <= r && r < x.end && !MOMENT_TYPES.includes(x.e.type)) || null;
+        next = timed.find(x => x.s > r) || null;
+      } else {
+        next = items.find(x => x.s !== null) || items[0] || null;
+      }
+      /* 乗っている途中なら、次の「着く・乗る」をひとつ選ぶ */
+      let step = null;
+      if (current && current.stops.length && r !== null) {
+        for (let k = 0; k < current.stops.length && !step; k++) {
+          const p = current.stops[k];
+          if (k > 0 && p.arr !== null && p.arr > r) step = { kind: 'arr', k, at: p.arr };
+          else if (k < current.stops.length - 1 && p.dep !== null && p.dep > r) step = { kind: 'dep', k, at: p.dep };
+        }
+      }
+      const after = next ? items.filter(x => x.i > next.i) : [];
+      const done = (r !== null && status === 'live') ? items.filter(x => x.s !== null && x.end <= r && x !== current) : [];
+      return {
+        idx, day, r, status, tripOver, items, current, next, step, after, done,
+        daysUntil: first && first.date > iso ? diffDays(iso, first.date) : 0,
+        clock: (() => { const d = new Date(nowTick.value); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')); })(),
+      };
+    });
+    /* 「あと 12分」「あと 3分20秒」「1時間5分前」 */
+    function untilText(at) {
+      const r = dm.value.r;
+      if (at == null || r == null) return '';
+      const d = at - r;
+      if (d <= 0) return d > -1 ? 'いま' : fmtMin(Math.round(-d)) + '前';
+      if (d < 10) { const s = Math.floor(d * 60); return `あと ${Math.floor(s / 60)}分${String(s % 60).padStart(2, '0')}秒`; }
+      return 'あと ' + fmtMin(Math.ceil(d));
+    }
+    const dmTime = (m) => m == null ? '' : (m >= 1440 ? '翌 ' : '') + minToHHMM(m);
+    function openDayMode() {
+      dayMode.on = true; dayMode.pick = -1; dayMode.delayOpen = false;
+      if (toast.action && toast.action.fn === openDayMode) { toast.show = false; toast.action = null; }   // すすめの知らせは片づける
+      startClock();
+      try { localStorage.setItem(LS_DAYMODE, '1'); } catch {}
+      nextTick(() => { const el = document.querySelector('[data-daymode]'); if (el) el.scrollTop = 0; });
+    }
+    function closeDayMode() {
+      dayMode.on = false;
+      stopClock();
+      setWake(false);
+      try { localStorage.setItem(LS_DAYMODE, '0'); } catch {}
+    }
+    function dayModePick(step) {
+      const n = state.days.length;
+      dayMode.pick = Math.min(n - 1, Math.max(0, dm.value.idx + step));
+    }
+    /* 乗る列車を1行で：「JR高徳線　特急うずしお　徳島 行」 */
+    const boardText = (st) => [st.line, st.kind, st.dest && (st.dest + ' 行')].filter(Boolean).join('　');
+    /* 下の帯のボタンが相手にする予定（いまの予定、無ければ次の予定） */
+    const dmFocus = computed(() => dm.value.current || dm.value.next || null);
+    /* 地図で開く場所。電車は「場所」欄が空のことが多いので、経路の最初と最後の駅を使う */
+    const dmPlace = computed(() => {
+      const x = dmFocus.value;
+      if (!x) return '';
+      if (x.e.location) return x.e.location;
+      const names = x.stops.map(p => p.st.name).filter(Boolean);
+      return names.length >= 2 ? names[0] + ' → ' + names[names.length - 1] : (names[0] || '');
+    });
+    /* 遅れ・押しを、いまの予定（無ければ次の予定）から後ろへまとめて反映する */
+    function dayModeDelay(mins) {
+      const x = dmFocus.value;
+      if (!x) return;
+      shiftFrom(dm.value.idx, x.e, mins);
+      dayMode.delayOpen = false;
+    }
+    /* 画面を点けたままにする（Wake Lock）。対応していない端末では知らせるだけ */
+    const wakeSupported = typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+    let wakeLock = null;
+    async function setWake(on, announce = false) {
+      dayMode.wake = !!on;
+      try {
+        if (on) {
+          if (!wakeSupported) { dayMode.wake = false; flash('この端末では画面を点けたままにできません', 'fa-circle-info'); return; }
+          if (!wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+          if (announce) flash('画面を点けたままにします', 'fa-lightbulb');
+        } else if (wakeLock) {
+          const w = wakeLock; wakeLock = null; await w.release();
+          if (announce) flash('画面が自動で消えるように戻しました', 'fa-lightbulb');
+        }
+      } catch { dayMode.wake = false; }
+    }
+    /* 画面を切り替えると Wake Lock は外れるので、戻ってきたら掛け直す */
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') { nowTick.value = Date.now(); if (dayMode.on && dayMode.wake && !wakeLock) setWake(true); }
+    });
+    /* 起動時：前回が当日モードならそのまま開く。旅程の日なら1日1回だけ「当日モードにしますか」と聞く */
+    function dayModeOnBoot() {
+      try {
+        if (localStorage.getItem(LS_DAYMODE) === '1') { openDayMode(); return; }
+        const iso = todayISO();
+        if (state.days.some(d => d.date === iso) && localStorage.getItem(LS_DAYASK) !== iso) {
+          localStorage.setItem(LS_DAYASK, iso);
+          flash('今日は旅程の日です', 'fa-person-walking-luggage', { label: '当日モードにする', icon: 'fa-mobile-screen', fn: openDayMode });
+        }
+      } catch {}
+    }
+
+
+    /* ---------- スマホで開く（リンクと QR で旅程を渡す） ----------
+       PC（file:// や別のブラウザ）とスマホ（公開URL）は置き場が別なので、旅程をリンクに詰めて渡す。
+       中身は「#trip=」より後ろ（URLのハッシュ）に入れるので、サーバーには送られない。
+       既定値・空の欄は落としてから deflate-raw で縮める（読み込み側の normalizeData が元に戻す） */
+    const SITE_URL = 'https://ogusout410541-dotcom.github.io/trip-planner/';
+    const shareBase = () => (location.protocol === 'https:' ? location.origin + location.pathname : SITE_URL);
+    const b64u = (bytes) => { let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+    const unb64u = (str) => { const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
+    const pipeBytes = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+    const slimJson = (obj) => JSON.stringify(obj, (k, v) => {
+      if (k.startsWith('__')) return undefined;
+      if (v === '' || v === false || v === null) return undefined;
+      if (Array.isArray(v) && !v.length && k !== 'events' && k !== 'days') return undefined;
+      return v;
+    });
+    async function packTrip(obj) {
+      const raw = new TextEncoder().encode(slimJson(obj));
+      if (typeof CompressionStream === 'function') {
+        try { return 'z' + b64u(await pipeBytes(raw, new CompressionStream('deflate-raw'))); } catch {}
+      }
+      return 'r' + b64u(raw);
+    }
+    async function unpackTrip(str) {
+      let bytes = unb64u(str.slice(1));
+      if (str[0] === 'z') bytes = await pipeBytes(bytes, new DecompressionStream('deflate-raw'));
+      else if (str[0] !== 'r') throw new Error('形式が違います');
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+    const share = reactive({ open: false, url: '', qr: '', busy: false, canShare: false });
+    async function openShare() {
+      persistCurrent();
+      share.open = true; share.busy = true; share.url = ''; share.qr = '';
+      try {
+        const payload = { app: 'trip', v: 1, id: currentTripId.value, data: JSON.parse(JSON.stringify(state)) };
+        share.url = shareBase() + '#trip=' + await packTrip(payload);
+        share.qr = (window.HC && window.HC.qr) ? (window.HC.qr.svg(share.url, { ecl: 'L', px: 280 }) || '') : '';
+        share.canShare = typeof navigator.share === 'function';
+      } catch { flash('リンクを作れませんでした', 'fa-triangle-exclamation'); share.open = false; }
+      share.busy = false;
+    }
+    async function copyShare() {
+      try { await navigator.clipboard.writeText(share.url); flash('リンクをコピーしました。自分あてに送って、スマホで開いてください', 'fa-copy'); }
+      catch { flash('コピーできませんでした。リンクの欄を長押しして選んでください', 'fa-triangle-exclamation'); }
+    }
+    async function nativeShare() {
+      try { await navigator.share({ title: state.title, url: share.url }); } catch {}
+    }
+
+    /* 受け取る側：起動時に #trip= があれば中身を見せて、取り込むかたずねる */
+    const incoming = reactive({ open: false, id: '', data: null, exists: false, error: '' });
+    async function checkIncoming() {
+      const m = location.hash.match(/^#trip=([A-Za-z0-9_-]+)$/);
+      if (!m) return;
+      try {
+        const obj = await unpackTrip(m[1]);
+        if (!obj || obj.app !== 'trip' || !obj.data) throw new Error('旅程のリンクではありません');
+        incoming.data = normalizeData(obj.data);
+        incoming.id = typeof obj.id === 'string' ? obj.id : '';
+        incoming.exists = !!incoming.id && tripIndex.value.some(t => t.id === incoming.id);
+        incoming.open = true;
+      } catch {
+        flash('リンクから旅程を読み取れませんでした。リンクが途中で切れていないか確かめてください', 'fa-triangle-exclamation');
+        clearIncomingHash();
+      }
+    }
+    function clearIncomingHash() {
+      /* setup の中の history は「元に戻す」の履歴なので、ブラウザの履歴は window から引く */
+      try { window.history.replaceState(null, '', location.pathname + location.search); } catch {}
+    }
+    /* mode: 'replace'＝同じ旅程を置き換える（取り消せる） / 'add'＝別の旅程として足す */
+    function acceptIncoming(mode) {
+      const data = incoming.data;
+      if (!data) return;
+      persistCurrent();
+      let id = incoming.id;
+      let before = null;
+      if (mode === 'replace' && incoming.exists) {
+        try { before = localStorage.getItem(tripKey(id)); } catch {}
+      } else if (incoming.exists || !/^t[a-z0-9]+$/.test(id)) {
+        id = newTripId();                    // 別の旅程として足す
+        if (incoming.exists) data.title = data.title + '（受け取り）';
+      }
+      /* 初めて受け取る旅程は、送り元と同じ id のまま入れる（次に送ったとき「同じ旅程」と分かるように） */
+      if (!lsSet(tripKey(id), JSON.stringify(data))) { flash('保存できませんでした。空き容量が足りません', 'fa-triangle-exclamation'); return; }
+      /* まっさらな端末に最初から入っている、手つかずの「新しい旅程」は片づける */
+      const prevId = currentTripId.value;
+      const untouched = prevId !== id && state.title === '新しい旅程' && !state.startDate && state.days.every(d => !d.date && !d.events.length);
+      if (untouched) {
+        tripIndex.value = tripIndex.value.filter(t => t.id !== prevId);
+        try { localStorage.removeItem(tripKey(prevId)); } catch {}
+      }
+      const sum = tripSummary(id, data);
+      const at = tripIndex.value.findIndex(t => t.id === id);
+      if (at >= 0) tripIndex.value.splice(at, 1, sum); else tripIndex.value.push(sum);
+      saveTripIndex();
+      _applyTrip(id, normalizeData(JSON.parse(JSON.stringify(data))));
+      incoming.open = false; incoming.data = null;
+      clearIncomingHash();
+      if (before !== null) {
+        flash(`「${data.title}」を受け取った内容に置き換えました`, 'fa-download', { label: '元に戻す', fn: () => {
+          lsSet(tripKey(id), before);
+          _applyTrip(id, normalizeData(JSON.parse(before)));
+          flash('受け取る前に戻しました', 'fa-rotate-left');
+        } });
+      } else flash(`「${data.title}」を受け取りました`, 'fa-download');
+    }
+    function rejectIncoming() { incoming.open = false; incoming.data = null; clearIncomingHash(); }
+
+
+    /* ---------- オフライン（Service Worker） ----------
+       公開ページ（https）で開いたときだけ登録する。localhost では古いキャッシュで混乱しないよう外しておく
+       （検査のときだけ trip_sw_force_v1=1 で有効にできる）。新しい版を取り込んでも勝手に読み込み直さない */
+    const swState = reactive({ supported: 'serviceWorker' in navigator, https: location.protocol === 'https:', cache: '', count: 0 });
+    function askSwStatus() {
+      try { navigator.serviceWorker.ready.then(reg => { if (reg.active) reg.active.postMessage('status'); }).catch(() => {}); } catch {}
+    }
+    function registerSW() {
+      if (!swState.supported) return;
+      let force = false;
+      try { force = localStorage.getItem('trip_sw_force_v1') === '1'; } catch {}
+      if (!swState.https && !force) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+        return;
+      }
+      swState.https = true;
+      const hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'status') { swState.cache = e.data.cache; swState.count = e.data.count; }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        askSwStatus();
+        if (hadController) flash('新しい版を取り込みました。読み込み直すと切り替わります', 'fa-rotate', { label: '読み込み直す', icon: 'fa-rotate', fn: () => location.reload() });
+      });
+      navigator.serviceWorker.register('sw.js').then(askSwStatus).catch(() => {});
+    }
+    const swVersion = computed(() => swState.cache ? swState.cache.replace(/^trip-v/, '') : '');
+
     /* ---------- drag & drop reorder ---------- */
     const dragSrc = ref(null); // {dayIdx, evId}
     function onDragStart(dayIdx, ev, e) {
@@ -7339,6 +7723,9 @@ JA眉山GS前|34.03774|134.51314|113
       otherTab.value = false;
     }
     function _applyTrip(id, data) {
+      /* 元に戻す履歴は旅程ごと。切り替えたのに残しておくと、前の旅程の中身が
+         今の旅程に書き戻されてしまう（Bを開いて元に戻すと、BがAの写しになっていた） */
+      history.value = []; redoStack.value = [];
       lastWritten = storedNow(id);
       draftFound.value = null;              // ほかの旅程の書きかけを出さない
       currentTripId.value = id;
@@ -7913,7 +8300,7 @@ JA眉山GS前|34.03774|134.51314|113
       /* 開いているモーダルを閉じてから印刷 */
       editing.value = null;
       showJsonModal.value = false; showSettings.value = false;
-      showTripPanel.value = false; showHelp.value = false; showSearch.value = false; changelog.open = false;
+      showTripPanel.value = false; showHelp.value = false; showSearch.value = false; changelog.open = false; share.open = false;
       moveWizard.open = false; tw.open = false; fixDlg.open = false;
       menuFor.value = ''; addMenu.open = false; shiftMenuFor.value = -1;
       await nextTick();            // 印刷時刻がDOMへ反映されてから印刷する
@@ -7944,6 +8331,8 @@ JA眉山GS前|34.03774|134.51314|113
       if (showTripPanel.value) return 'trip';
       if (showHelp.value) return 'help';
       if (changelog.open) return 'changelog';
+      if (incoming.open) return 'incoming';
+      if (share.open) return 'share';
       return '';
     });
     const FOCUS_FIRST = { edit: '[data-focus-first]', wizard: '[data-focus-first]', settings: '[data-focus-first]',
@@ -7990,7 +8379,7 @@ JA眉山GS前|34.03774|134.51314|113
       { keys: ['Esc'], desc: '開いているものを閉じる' },
     ];
     const isTyping = (t) => !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
-    const anyModal = () => !!(editing.value || showJsonModal.value || showSettings.value || showTripPanel.value || showHelp.value || changelog.open || moveWizard.open || addMenu.open);
+    const anyModal = () => !!(editing.value || showJsonModal.value || showSettings.value || showTripPanel.value || showHelp.value || changelog.open || share.open || incoming.open || dayMode.on || moveWizard.open || addMenu.open);
 
     function onKeydown(e) {
       if (e.key === 'Escape') {
@@ -8007,7 +8396,11 @@ JA眉山GS前|34.03774|134.51314|113
         else if (showTripPanel.value) showTripPanel.value = false;
         else if (showHelp.value) showHelp.value = false;
         else if (changelog.open) changelog.open = false;
+        else if (incoming.open) rejectIncoming();
+        else if (share.open) share.open = false;
         else if (showSearch.value) showSearch.value = false;
+        else if (dayMode.delayOpen) dayMode.delayOpen = false;
+        else if (dayMode.on) closeDayMode();
         return;
       }
       /* モーダルの中でタブが一周するようにする */
@@ -8107,6 +8500,10 @@ JA眉山GS前|34.03774|134.51314|113
       window.addEventListener('beforeprint', stampPrintTime);
       window.addEventListener('beforeprint', planPrint);
       maybeAutoBackup();
+      registerSW();
+      checkIncoming();
+      window.addEventListener('hashchange', checkIncoming);   // 開いているページにリンクを貼り直したとき
+      dayModeOnBoot();
       /* 更新してから初めて開いたときだけ、新しくなったことを出す（はじめて使う人には出さない） */
       try {
         const seen = localStorage.getItem(LS_SEEN_VER);
@@ -8141,6 +8538,9 @@ JA眉山GS前|34.03774|134.51314|113
       copyJson, downloadJson, pullToEditor, persistCurrent, saveError,
       downloadAllBackup, onImportFile, lastBackupAt, brokenCount, downloadBroken,
       APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog,
+      dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
+      share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
+      swState, swVersion,
       addDay, removeDay, openAdd, openEdit, saveEvent, deleteEvent, otherTab, reloadFromStore, storeChangedElsewhere,
       tryCloseEdit, closeEdit, discardEdit, discardAsk, editDirty,
       linkState, useLinkPlace, useLinkTime, pushNextStart, setEventPlace, shortName,
@@ -8293,6 +8693,14 @@ JA眉山GS前|34.03774|134.51314|113
             <button @click="showHelp = true" title="ショートカット一覧（?）" aria-label="ヘルプ"
               class="tap hidden lg:grid w-9 h-9 place-items-center rounded-xl text-sm font-bold text-slate-500 hover:bg-white/70 transition">
               <i class="fa-solid fa-circle-question"></i>
+            </button>
+            <button @click="openShare()" title="スマホで開く（リンク・QRコード）" aria-label="スマホで開く"
+              class="tap hidden sm:grid w-9 h-9 place-items-center rounded-xl text-sm font-bold text-slate-500 hover:bg-white/70 transition">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </button>
+            <button @click="openDayMode()" title="当日モード（旅の最中に見る画面）" aria-label="当日モード"
+              class="tap w-9 h-9 grid place-items-center rounded-xl text-sm font-bold text-indigo-600 hover:bg-white/70 transition">
+              <i class="fa-solid fa-person-walking-luggage"></i>
             </button>
             <button @click="print" title="印刷 / PDF（Ctrl+P）"
               class="px-3 sm:px-4 h-9 ml-0.5 rounded-xl text-sm font-bold text-white shadow-lg transition flex items-center gap-2 shrink-0"
@@ -9727,6 +10135,15 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="mt-5 pt-4 border-t flex items-center gap-2 flex-wrap" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
             <span class="text-xs font-black text-ink"><i class="fa-solid fa-code-branch text-indigo-400 mr-1"></i>バージョン v{{ APP_VERSION }}</span>
             <button @click="openChangelog()" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
+            <p class="w-full text-[11px] text-slate-500 leading-relaxed">
+              <i class="fa-solid fa-wifi mr-1"></i>
+              <template v-if="!swState.https">圏外で使えるのは、公開ページ（https）で開いたときです。スマホへは「スマホで開く」から送れます。</template>
+              <template v-else-if="!swVersion">圏外でも開けるよう、この端末に保存しています。</template>
+              <template v-else-if="swVersion === APP_VERSION">圏外でも開けます（v{{ swVersion }} をこの端末に保存済み）。</template>
+              <template v-else>この端末に保存されている版は v{{ swVersion }} です。読み込み直すと v{{ APP_VERSION }} に切り替わります。</template>
+            </p>
+            <button @click="showSettings = false; openShare()" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-mobile-screen-button"></i>スマホで開く（リンク・QRコード）</button>
           </div>
         </div>
       </div>
@@ -10913,6 +11330,227 @@ JA眉山GS前|34.03774|134.51314|113
       </div>
     </transition>
 
+    <!-- ============ 当日モード ============ -->
+    <div v-if="dayMode.on" data-daymode class="dm no-print fixed inset-0 z-40 overflow-y-auto" role="region" aria-label="当日モード">
+      <div class="max-w-xl mx-auto px-4 pt-3 pb-32">
+        <!-- 時計 -->
+        <div class="dm-top">
+          <button class="dm-icon" @click="closeDayMode()" aria-label="当日モードを閉じる" title="ふだんの画面へ"><i class="fa-solid fa-xmark"></i></button>
+          <div class="dm-clock">{{ dm.clock[0] }}:{{ dm.clock[1] }}<span class="dm-sec">{{ dm.clock[2] }}</span></div>
+          <button class="dm-icon" :class="dayMode.wake ? 'dm-icon-on' : ''" @click="setWake(!dayMode.wake, true)" :aria-pressed="dayMode.wake ? 'true' : 'false'"
+                  aria-label="画面を点けたままにする" title="画面を点けたままにする"><i class="fa-solid fa-lightbulb"></i></button>
+        </div>
+        <div class="dm-dayline">
+          <button class="dm-icon dm-icon-s" :disabled="dm.idx <= 0" @click="dayModePick(-1)" aria-label="前の日"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="flex-1 text-center min-w-0">
+            <div class="dm-dayname">Day {{ dm.idx + 1 }}<span v-if="dm.day.date">　{{ shortDate(dm.day.date) }}（{{ weekday(dm.day.date) }}）</span></div>
+            <div class="dm-trip truncate">{{ state.title }}</div>
+          </div>
+          <button class="dm-icon dm-icon-s" :disabled="dm.idx >= state.days.length - 1" @click="dayModePick(1)" aria-label="次の日"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+
+        <div v-if="dm.status === 'before'" class="dm-note"><i class="fa-solid fa-calendar-day"></i>
+          <span v-if="dm.daysUntil > 0">旅行の初日まで、あと {{ dm.daysUntil }} 日です。この日の予定を表示しています</span>
+          <span v-else>この日の予定を表示しています</span>
+        </div>
+        <div v-else-if="dm.status === 'nodate'" class="dm-note"><i class="fa-solid fa-circle-info"></i>
+          <span>この日には日付が入っていないため、いまの予定を決められません。旅程の設定で出発日を入れてください</span>
+        </div>
+        <div v-else-if="dm.tripOver" class="dm-note"><i class="fa-solid fa-flag-checkered"></i><span>この旅程の日程はすべて終わりました</span></div>
+
+        <!-- いま -->
+        <section v-if="dm.current" class="dm-card dm-card-now" aria-label="いまの予定">
+          <div class="dm-label dm-label-now"><span class="dm-dot"></span>いま</div>
+          <div class="dm-title"><i class="fa-solid mr-1.5" :class="cat(dm.current.e.type).icon" :style="{ color: cat(dm.current.e.type).color }"></i>{{ dm.current.e.title }}</div>
+          <div class="dm-sub">{{ dmTime(dm.current.s) }} 〜 {{ dmTime(dm.current.end) }}<span class="dm-left">終わりまで {{ untilText(dm.current.end) }}</span></div>
+
+          <!-- 乗っている途中：次に着く駅・乗る列車 -->
+          <div v-if="dm.step" class="dm-step">
+            <template v-if="dm.step.kind === 'arr'">
+              <div class="dm-step-head">次の駅</div>
+              <div class="dm-step-main">{{ dm.current.stops[dm.step.k].st.name }}<span class="dm-step-time">{{ dmTime(dm.step.at) }} 着</span>
+                <span v-if="dm.current.stops[dm.step.k].st.arrPlatform && !dm.current.stops[dm.step.k].st.through" class="dm-plat">{{ dm.current.stops[dm.step.k].st.arrPlatform }}</span></div>
+              <div class="dm-count">{{ untilText(dm.step.at) }}</div>
+              <div v-if="dm.step.k === dm.current.stops.length - 1" class="dm-step-then"><i class="fa-solid fa-person-walking-arrow-right mr-1"></i>ここで降ります</div>
+              <div v-else-if="dm.current.stops[dm.step.k].st.through" class="dm-step-then"><i class="fa-solid fa-arrow-right mr-1"></i>降りずにそのまま{{ dm.current.stops[dm.step.k].st.line ? ' ' + dm.current.stops[dm.step.k].st.line + ' へ' : '進みます' }}</div>
+              <div v-else class="dm-step-then dm-step-xfer">
+                <i class="fa-solid fa-right-left mr-1"></i>乗り換え
+                <span v-if="dm.current.stops[dm.step.k].dep !== null">（{{ fmtMin(Math.round(dm.current.stops[dm.step.k].dep - dm.step.at)) || '0分' }}）→ {{ dmTime(dm.current.stops[dm.step.k].dep) }} 発</span>
+                <span v-if="dm.current.stops[dm.step.k].st.depPlatform" class="dm-plat">{{ dm.current.stops[dm.step.k].st.depPlatform }}</span>
+                <span class="block mt-0.5">{{ boardText(dm.current.stops[dm.step.k].st) }}</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="dm-step-head">次に乗る列車</div>
+              <div class="dm-step-main">{{ dm.current.stops[dm.step.k].st.name }}<span class="dm-step-time">{{ dmTime(dm.step.at) }} 発</span>
+                <span v-if="dm.current.stops[dm.step.k].st.depPlatform" class="dm-plat">{{ dm.current.stops[dm.step.k].st.depPlatform }}</span></div>
+              <div class="dm-count">{{ untilText(dm.step.at) }}</div>
+              <div class="dm-step-then">{{ boardText(dm.current.stops[dm.step.k].st) }}</div>
+            </template>
+          </div>
+          <ol v-if="dm.current.stops.length > 1" class="dm-stops">
+            <li v-for="(p, k) in dm.current.stops" :key="'dmc' + k" :class="{ 'dm-stop-hit': dm.step && dm.step.k === k, 'dm-stop-past': dm.r !== null && (p.dep !== null ? p.dep : (p.arr !== null ? p.arr : 1e9)) < dm.r }">
+              <span class="dm-stop-name">{{ p.st.name || '（駅名なし）' }}</span>
+              <span class="dm-stop-t">
+                <span v-if="p.arr !== null">{{ dmTime(p.arr) }}着<template v-if="p.st.arrPlatform && !p.st.through"> {{ p.st.arrPlatform }}</template></span>
+                <span v-if="p.dep !== null && k < dm.current.stops.length - 1">{{ dmTime(p.dep) }}発<template v-if="p.st.depPlatform && !p.st.through"> {{ p.st.depPlatform }}</template></span>
+              </span>
+            </li>
+          </ol>
+          <div v-if="dm.current.e.location" class="dm-place"><i class="fa-solid fa-location-dot mr-1"></i>{{ dm.current.e.location }}</div>
+          <div v-if="dm.current.e.seat" class="dm-place"><i class="fa-solid fa-couch mr-1"></i>{{ seatLabel(dm.current.e) }}：{{ dm.current.e.seat }}</div>
+        </section>
+
+        <!-- 次 -->
+        <section v-if="dm.next" class="dm-card" aria-label="次の予定">
+          <div class="dm-label">{{ dm.status === 'live' ? '次' : 'この日の最初' }}</div>
+          <div class="flex items-end gap-3 flex-wrap">
+            <div class="dm-big">{{ dmTime(dm.next.s) || '時刻なし' }}</div>
+            <div v-if="dm.status === 'live'" class="dm-count pb-1.5">{{ untilText(dm.next.s) }}</div>
+          </div>
+          <div class="dm-title mt-1"><i class="fa-solid mr-1.5" :class="cat(dm.next.e.type).icon" :style="{ color: cat(dm.next.e.type).color }"></i>{{ dm.next.e.title }}</div>
+          <!-- 乗る列車（最初の駅） -->
+          <div v-if="dm.next.stops.length" class="dm-step">
+            <div class="dm-step-main">{{ dm.next.stops[0].st.name }}<span v-if="dm.next.stops[0].dep !== null" class="dm-step-time">{{ dmTime(dm.next.stops[0].dep) }} 発</span>
+              <span v-if="dm.next.stops[0].st.depPlatform" class="dm-plat">{{ dm.next.stops[0].st.depPlatform }}</span></div>
+            <div class="dm-step-then">{{ boardText(dm.next.stops[0].st) }}</div>
+          </div>
+          <ol v-if="dm.next.stops.length > 1" class="dm-stops">
+            <li v-for="(p, k) in dm.next.stops" :key="'dmn' + k">
+              <span class="dm-stop-name">{{ p.st.name || '（駅名なし）' }}</span>
+              <span class="dm-stop-t">
+                <span v-if="p.arr !== null">{{ dmTime(p.arr) }}着<template v-if="p.st.arrPlatform && !p.st.through"> {{ p.st.arrPlatform }}</template></span>
+                <span v-if="p.dep !== null && k < dm.next.stops.length - 1">{{ dmTime(p.dep) }}発<template v-if="p.st.depPlatform && !p.st.through"> {{ p.st.depPlatform }}</template></span>
+              </span>
+            </li>
+          </ol>
+          <div v-if="dm.next.e.location" class="dm-place"><i class="fa-solid fa-location-dot mr-1"></i>{{ dm.next.e.location }}</div>
+          <div v-if="dm.next.e.seat" class="dm-place"><i class="fa-solid fa-couch mr-1"></i>{{ seatLabel(dm.next.e) }}：{{ dm.next.e.seat }}</div>
+          <div v-if="dm.next.e.notes" class="dm-notes">{{ dm.next.e.notes }}</div>
+        </section>
+        <div v-else-if="dm.status === 'live' && !dm.current" class="dm-note"><i class="fa-solid fa-moon"></i><span>この日の予定はもうありません</span></div>
+
+        <!-- このあと -->
+        <section v-if="dm.after.length" class="dm-list" aria-label="このあとの予定">
+          <div class="dm-label">このあと</div>
+          <button v-for="x in dm.after" :key="'dma' + x.e.id" class="dm-row" @click="openEdit(dm.idx, x.e)">
+            <span class="dm-row-t">{{ dmTime(x.s) }}</span>
+            <i class="fa-solid w-5 text-center" :class="cat(x.e.type).icon" :style="{ color: cat(x.e.type).color }"></i>
+            <span class="dm-row-title">{{ x.e.title }}<span v-if="x.e.location" class="dm-row-loc">{{ x.e.location }}</span></span>
+          </button>
+        </section>
+        <section v-if="dm.done.length" class="dm-list">
+          <button class="dm-label dm-label-btn" @click="dayMode.doneOpen = !dayMode.doneOpen" :aria-expanded="dayMode.doneOpen ? 'true' : 'false'">
+            終わった予定 {{ dm.done.length }}件<i class="fa-solid ml-1" :class="dayMode.doneOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+          </button>
+          <template v-if="dayMode.doneOpen">
+            <button v-for="x in dm.done" :key="'dmd' + x.e.id" class="dm-row dm-row-done" @click="openEdit(dm.idx, x.e)">
+              <span class="dm-row-t">{{ dmTime(x.s) }}</span>
+              <i class="fa-solid w-5 text-center" :class="cat(x.e.type).icon"></i>
+              <span class="dm-row-title">{{ x.e.title }}</span>
+            </button>
+          </template>
+        </section>
+      </div>
+
+      <!-- 親指の届くところに固定 -->
+      <div class="dm-bar">
+        <div v-if="dayMode.delayOpen && dmFocus" class="dm-delay" role="group" aria-label="遅れを入れる">
+          <div class="dm-delay-head">「{{ dmFocus.e.title }}」から後ろの時刻をずらします</div>
+          <div class="grid grid-cols-5 gap-1.5">
+            <button v-for="m in [5, 10, 15, 30, -5]" :key="'dmdl' + m" class="dm-delay-btn" @click="dayModeDelay(m)">{{ m > 0 ? '+' + m : '−' + (-m) }}分</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button class="dm-act" :disabled="!dmFocus" @click="dayMode.delayOpen = !dayMode.delayOpen" :aria-expanded="dayMode.delayOpen ? 'true' : 'false'">
+            <i class="fa-solid fa-clock-rotate-left"></i>遅れを入れる</button>
+          <a class="dm-act" :class="{ 'dm-act-off': !dmPlace }"
+             :href="dmPlace ? mapUrl(dmPlace) : undefined" target="_blank" rel="noopener">
+            <i class="fa-solid fa-map-location-dot"></i>地図</a>
+          <button class="dm-act" :disabled="!dmFocus" @click="openEdit(dm.idx, dmFocus.e)">
+            <i class="fa-solid fa-pen"></i>予定を開く</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ スマホで開く ============ -->
+    <transition name="fade">
+      <div v-if="share.open" data-modal="share" role="dialog" aria-modal="true" aria-label="スマホで開く" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
+           style="background:rgba(31,36,51,.45)" @click.self="share.open=false">
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+             :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <h2 class="font-black text-ink text-lg">スマホで開く</h2>
+            <button @click="share.open=false" class="ml-auto w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="閉じる"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            「{{ state.title }}」をリンクにしました。スマホでこのリンクを開くと、旅程がスマホに入ります。
+            スマホで一度開いておけば、圏外でも見られます。
+          </p>
+          <div v-if="share.busy" class="py-10 text-center text-slate-500 text-sm"><i class="fa-solid fa-spinner fa-spin mr-1"></i>作っています</div>
+          <template v-else>
+            <div v-if="share.qr" class="mt-4 text-center">
+              <div class="inline-block p-2 rounded-2xl bg-white" v-html="share.qr"></div>
+              <div class="text-[11px] text-slate-500 mt-1.5">スマホのカメラで読み取ってください</div>
+            </div>
+            <div v-else class="mt-4 rounded-xl px-3 py-2.5 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 leading-relaxed">
+              <i class="fa-solid fa-circle-info mr-1"></i>予定が多くて QR コードに入りきりません。下のボタンでリンクをコピーし、LINE などで自分あてに送ってから、スマホで開いてください。
+            </div>
+            <input :value="share.url" readonly aria-label="旅程のリンク" @focus="$event.target.select()"
+                   class="mt-4 w-full px-3 py-2 rounded-xl border border-slate-200 text-[11px] text-slate-600 bg-slate-50 font-mono">
+            <div class="grid gap-2 mt-2" :class="share.canShare ? 'grid-cols-2' : 'grid-cols-1'">
+              <button @click="copyShare()" data-focus-first class="py-2.5 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 transition flex items-center justify-center gap-2"
+                      style="background:linear-gradient(135deg,#6366f1,#a855f7)"><i class="fa-solid fa-copy"></i>リンクをコピー</button>
+              <button v-if="share.canShare" @click="nativeShare()" class="py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-share-from-square"></i>ほかのアプリで送る</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-3 leading-relaxed">
+              PCで直したあとは、もう一度リンクを作って開き直すと、スマホの旅程が新しい内容に置き換わります。
+            </p>
+          </template>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ============ リンクから受け取る ============ -->
+    <transition name="fade">
+      <div v-if="incoming.open && incoming.data" data-modal="incoming" role="dialog" aria-modal="true" aria-label="旅程を受け取る" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
+           style="background:rgba(31,36,51,.45)">
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+             :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              <i class="fa-solid fa-download"></i>
+            </div>
+            <h2 class="font-black text-ink text-lg">旅程を受け取る</h2>
+          </div>
+          <div class="rounded-2xl px-4 py-3 border border-slate-200">
+            <div class="font-black text-ink">{{ incoming.data.title }}</div>
+            <div class="text-xs text-slate-600 mt-1">
+              <span v-if="incoming.data.startDate">{{ incoming.data.startDate }} 〜 {{ incoming.data.endDate }}　</span>{{ incoming.data.days.length }}日間・予定 {{ incoming.data.days.reduce((n, d) => n + d.events.length, 0) }}件
+            </div>
+          </div>
+          <p v-if="incoming.exists" class="text-xs text-slate-600 mt-3 leading-relaxed">
+            この端末には同じ旅程がすでにあります。受け取った内容に置き換えると、この端末で直したところは消えます（あとから元に戻せます）。
+          </p>
+          <div class="grid gap-2 mt-4">
+            <button v-if="incoming.exists" @click="acceptIncoming('replace')" data-focus-first
+                    class="py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 transition" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              受け取った内容に置き換える</button>
+            <button @click="acceptIncoming('add')" :data-focus-first="incoming.exists ? null : ''"
+                    class="py-3 rounded-xl text-sm font-bold transition"
+                    :class="incoming.exists ? 'text-slate-700 bg-white/70 hover:bg-white border border-slate-200' : 'text-white shadow-md hover:opacity-90'"
+                    :style="incoming.exists ? null : 'background:linear-gradient(135deg,#6366f1,#a855f7)'">
+              {{ incoming.exists ? '別の旅程として追加する' : 'この旅程を追加する' }}</button>
+            <button @click="rejectIncoming()" class="py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition">受け取らない</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- ============ アップデート履歴 ============ -->
     <transition name="fade">
       <div v-if="changelog.open" data-modal="changelog" role="dialog" aria-modal="true" aria-label="アップデート履歴" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
@@ -11011,10 +11649,11 @@ JA眉山GS前|34.03774|134.51314|113
 
     <!-- ============ TOAST ============ -->
     <transition name="fade">
-      <div v-if="toast.show" class="no-print fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[92vw]">
+      <!-- 当日モードでは、画面下の操作ボタンにかぶらないよう上へずらす -->
+      <div v-if="toast.show" class="no-print fixed left-1/2 -translate-x-1/2 z-50 max-w-[92vw]" :class="dayMode.on ? 'bottom-28' : 'bottom-6'">
         <div class="bg-ink text-white pl-5 pr-3 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-2.5">
           <i class="fa-solid text-emerald-300 shrink-0" :class="toast.icon"></i>
-          <span class="truncate">{{ toast.msg }}</span>
+          <span class="min-w-0 leading-snug">{{ toast.msg }}</span>
           <button v-if="toast.action" @click="runToastAction"
             class="shrink-0 ml-1 px-3 py-1.5 rounded-xl text-[11px] font-black bg-white/15 hover:bg-white/25 transition flex items-center gap-1.5">
             <i class="fa-solid" :class="toast.action.icon || 'fa-rotate-left'"></i>{{ toast.action.label }}

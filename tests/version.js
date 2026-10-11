@@ -14,7 +14,8 @@ const { launch, open, app, suite, fixture, tripStorage, ROOT } = require('./lib'
     const info = await app(page, A => ({ v: A.APP_VERSION, log: A.CHANGELOG, tags: Object.keys(A.CHANGE_TAGS) }));
     t.ok(info.log[0].v === info.v, '履歴の先頭が今の版', [info.v, info.log[0].v]);
     const sw = fs.existsSync(path.join(ROOT, 'sw.js')) ? fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8') : '';
-    if (sw) t.ok(new RegExp(`CACHE\s*=\s*'trip-v${info.v.replace(/\./g, '\.')}'`).test(sw), 'sw.js の CACHE が今の版', (sw.match(/CACHE\s*=\s*'[^']*'/) || [''])[0]);
+    const swCache = (sw.match(/const CACHE\s*=\s*'([^']*)'/) || [])[1];
+    t.ok(swCache === 'trip-v' + info.v, 'sw.js の CACHE が今の版', swCache);
     const sorted = info.log.every((c, i) => i === 0 || page && cmp(info.log[i - 1].v, c.v) > 0);
     t.ok(sorted, '履歴は新しい順');
     t.ok(info.log.every(c => /^\d{4}-\d{2}-\d{2}$/.test(c.date) && c.title && c.items.length), '各版に日付・題名・項目がある');

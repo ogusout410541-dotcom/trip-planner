@@ -64,6 +64,16 @@ const { bigTrip } = require('./fixtures/gen');
     await sleep(300);
     r = await app(page, A => A.tripIndex.map(x => x.title));
     t.ok(r.length === 3 && r.some(x => /のコピー$/.test(x)), '旅程を複製できる', r);
+
+    // ── 旅程を切り替えたら、前の旅程の「元に戻す」は効かない（効くと前の旅程の中身で上書きしてしまう） ──
+    await app(page, A => A.createNewTrip());
+    await sleep(300);
+    await app(page, A => { A.openAdd(0); A.editing.title = 'Bの予定'; A.editing.startTime = '10:00'; A.saveEvent(); });
+    await app(page, A => { A.undo(); A.undo(); A.undo(); });
+    await sleep(400);
+    r = await app(page, A => ({ title: A.state.title, n: A.state.days.reduce((n, d) => n + d.events.length, 0), titles: A.tripIndex.map(t => t.title) }));
+    t.ok(r.title === '新しい旅程' && r.n === 0, '切り替えたあとの「元に戻す」は今の旅程の中だけで効く', r);
+    t.ok(r.titles.filter(x => /さいたま→福岡/.test(x) && !/のコピー/.test(x)).length === 1, 'ほかの旅程の写しができない', r.titles);
     t.ok(!page.errors.length, '操作中にエラーなし', page.errors);
     await page.close();
 

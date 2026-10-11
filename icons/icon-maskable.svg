@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <!-- 出発の点から、点線の道のりを通って到着のピンへ -->
+  <path d="M196 382 C270 382 262 330 322 352" fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round" stroke-dasharray="0.1 50"/>
+  <circle cx="150" cy="382" r="36" fill="#fff"/>
+  <circle cx="150" cy="382" r="15" fill="#7c5cf3"/>
+  <path d="M340 104c-50 0-88 38-88 86 0 62 88 146 88 146s88-84 88-146c0-48-38-86-88-86z" fill="#fff"/>
+  <circle cx="340" cy="190" r="32" fill="#7c5cf3"/>
+</svg>
