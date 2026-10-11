@@ -1,0 +1,7 @@
+# 公開しないもの（写真・画面の控え・旧版の控え）
+IMG_*.JPG
+プレビュー/
+_backup/
+# テストの道具と出力
+tests/node_modules/
+tests/out/
