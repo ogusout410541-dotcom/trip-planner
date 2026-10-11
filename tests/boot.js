@@ -18,7 +18,10 @@ const path = require('path');
             header: !!document.querySelector('header') && document.querySelector('header').getBoundingClientRect().height > 20,
             text: document.body.innerText.length,
             darkClass: document.body.classList.contains('dark'),
+            // ヘッダーのタイトルが読める幅で出ているか（ボタンを足して潰れた退行を見張る）
+            titleW: (() => { const el = document.querySelector('header .truncate'); return el ? Math.round(el.getBoundingClientRect().width) : 0; })(),
           }));
+          t.ok(info.titleW >= 80, `${label}：ヘッダーのタイトルが潰れない`, info.titleW);
           t.ok(!page.errors.length, `${label}：エラーなし`, page.errors);
           t.ok(info.sw <= info.cw, `${label}：横にはみ出さない`, info);
           t.ok(info.header && info.text > 50, `${label}：描画される`, info);

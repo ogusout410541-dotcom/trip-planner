@@ -709,14 +709,20 @@ const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextT
    tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
 const APP_VERSION = '1.1.0';
 const CHANGELOG = [
-  { v: '1.1.0', date: '2026-10-12', title: '壊れにくく、スマホでも使えるように', items: [
+  { v: '1.1.0', date: '2026-10-12', title: '旅の当日にスマホで使えるように', items: [
+    ['new', '当日モード：いまの予定・次の予定・次の駅と乗換までの残り時間を大きく出します。遅れたときは、その予定から後ろの時刻をまとめてずらせます'],
+    ['new', 'スマホで開く：旅程をリンクか QR コードにして、スマホへ送れます。スマホで一度開けば、圏外でも見られます'],
+    ['new', '設定に、版の番号とこの履歴を出しました'],
+    ['up', '画面の部品をアプリの中に入れました。インターネットにつながっていなくても開けます'],
+    ['up', '言い方と表記をそろえました（「選ぶ」「タイトル」「時刻」「重なり」など）'],
+    ['up', 'スマホの幅でも、上の帯に旅程のタイトルが見えるようにしました。明るい画面と暗い画面の切り替えは設定からできます'],
+    ['fix', '旅程を切り替えたあとで「元に戻す」を押すと、前に開いていた旅程の中身で上書きされることがありました'],
     ['fix', '開いていた旅程のデータが壊れていると、旅程の一覧が「新しい旅程」1件だけになることがありました。いまは読めない旅程だけを控えに移し、ほかの旅程はそのまま残ります'],
     ['fix', '印刷の「仕上がりを確かめる」で出る枚数と、実際に刷った枚数が1枚ずれることがありました'],
-    ['up', '画面の部品をアプリの中に入れました。読み込みが速くなり、インターネットにつながっていなくても開けます'],
-    ['new', '設定に版の番号と、この履歴を出しました'],
+    ['fix', '長い知らせが途中で切れて読めないことがありました'],
   ] },
   { v: '1.0.0', date: '2026-09-11', title: 'ここまでの版', items: [
-    ['new', '駅ごとの乗換・直通・番線を入れられる経路、時刻表からの列車えらび、所要時間の目安'],
+    ['new', '駅ごとの乗換・直通・番線を入れられる経路、時刻表からの列車選び、所要時間の目安'],
     ['new', '気になる点の点検と、その場で直せる案内'],
     ['new', '紙に合わせて段と枚数を自動で決める印刷'],
   ] },
@@ -1596,7 +1602,7 @@ createApp({
       Object.keys(railIdx.place).forEach(k => { delete railIdx.place[k]; });
       try { localStorage.removeItem(LS_NET); } catch {}
       netState.tried = 0; netState.failed = 0; netState.lastError = '';
-      flash('貯めた駅・地点のデータを消しました', 'fa-broom');
+      flash('保存していた駅・地点のデータを消しました', 'fa-broom');
       refreshRailData();
     }
 
@@ -5153,8 +5159,8 @@ JA眉山GS前|34.03774|134.51314|113
         if (!String(e.title || '').trim()) {
           const guess = placeOf(e, 'start') || cat(e.type).label;
           push({ level: 'warn', type: 'title', key: 'notitle:' + e.id, ids: [e.id],
-                 msg: '題名のない予定があります',
-                 fix: { label: '場所を題名にする', detail: `題名を「${guess}」にします`,
+                 msg: 'タイトルのない予定があります',
+                 fix: { label: '場所をタイトルにする', detail: `タイトルを「${guess}」にします`,
                         run: () => { e.title = guess; } } });
         }
         const s0 = toMin(e.startTime), e0 = toMin(e.endTime);
@@ -5206,7 +5212,7 @@ JA眉山GS前|34.03774|134.51314|113
             const pd = toMin(prev.depTime);
             if (pd !== null && a !== null && a < pd && pd - a < 12 * 60) {
               push({ level: 'error', type: 'route', key: 'seqorder:' + e.id + ':' + si + ':' + prev.depTime + st.arrTime, ids: [e.id], stop: si,
-                     how: '駅の並び順か、どちらかの時刻が違います。時刻表からえらび直すと確実です',
+                     how: '駅の並び順か、どちらかの時刻が違います。時刻表から選び直すと確実です',
                      msg: `「${nm}」${prev.name || '前の駅'} ${prev.depTime}発 → ${st.name || '次の駅'} ${st.arrTime}着 と、時刻が戻っています` });
             }
           }
@@ -5404,7 +5410,7 @@ JA眉山GS前|34.03774|134.51314|113
                      msg: `「${nm}」の ${st.name || '乗換駅'} での乗換が ${m}分しかありません` + (samePf ? '（同じホーム）' : ''),
                      fixes: [
                        { label: '対面乗換にする',
-                         detail: `${st.name || 'この駅'} は、降りたホームの向かい（または同じホーム）で乗り継げる駅として覚えます。`
+                         detail: `${st.name || 'この駅'} は、降りたホームの向かい（または同じホーム）で乗り換えられる駅として覚えます。`
                                + '以降、この駅の短い乗換は指摘しません',
                          run: () => { st.quick = true; } },
                      ] });
@@ -5473,7 +5479,7 @@ JA眉山GS前|34.03774|134.51314|113
         const sureBoth = posConfident(from) && posConfident(to);
         const far = (sureBoth && km !== null) ? `（約${km < 10 ? km.toFixed(1) : km.toFixed(0)}km）` : '';
         push({ level: 'info', type: 'move', move: i, key: 'move:' + evs[i].id + ':' + evs[i + 1].id, ids: [evs[i].id, evs[i + 1].id],
-               how: '「移動を入れる」で2地点と手段をえらぶと、所要の目安つきで足せます',
+               how: '「移動を入れる」で2地点と手段を選ぶと、所要時間の目安つきで足せます',
                msg: `「${from}」から「${to}」への移動が入っていません${far}` });
       }
       /* --- 移動のつなぎ目 ---
@@ -6395,12 +6401,12 @@ JA眉山GS前|34.03774|134.51314|113
         flash('JSONをコピーしました', 'fa-clipboard-check');
       } catch {
         jsonText.value = currentJson();
-        flash('テキストエリアに出力しました', 'fa-file-export');
+        flash('下の欄に出しました', 'fa-file-export');
       }
     }
     function pullToEditor() {
       jsonText.value = currentJson();
-      flash('現在の旅程をエディタに出力しました', 'fa-arrow-down');
+      flash('いまの旅程を下の欄に出しました', 'fa-arrow-down');
     }
 
     /* ---------- 全旅程バックアップ（Cookie削除などで localStorage ごと消えたときの保険） ---------- */
@@ -6427,9 +6433,9 @@ JA眉山GS前|34.03774|134.51314|113
         _downloadText(allTripsJson(), '旅程バックアップ_全件_' + todayISO() + '.json');
         lastBackupAt.value = todayISO();
         try { localStorage.setItem(LS_LAST_BACKUP, lastBackupAt.value); } catch {}
-        if (!silent) flash('全旅程をバックアップしました', 'fa-download');
+        if (!silent) flash('すべての旅程をファイルに書き出しました', 'fa-download');
         return true;
-      } catch { if (!silent) flash('バックアップに失敗しました', 'fa-triangle-exclamation'); return false; }
+      } catch { if (!silent) flash('書き出せませんでした', 'fa-triangle-exclamation'); return false; }
     }
     /* Cookie削除などで消える前提で、1日1回だけ自動でファイルに書き出しておく。
        中身が空の新規旅程しかないときは、書き出す意味がないので動かさない */
@@ -6473,7 +6479,7 @@ JA眉山GS前|34.03774|134.51314|113
         showTripPanel.value = true;
         flash(`${count}件の旅程を復元しました`, 'fa-rotate-left');
       } else {
-        flash('読み込みに失敗しました', 'fa-triangle-exclamation');
+        flash('読み込めませんでした', 'fa-triangle-exclamation');
       }
     }
     function onImportFile(ev) {
@@ -6839,10 +6845,10 @@ JA眉山GS前|34.03774|134.51314|113
       if (e && e.type === 'wakeup') return '起きる時刻';
       if (e && e.type === 'sleep') return '寝る時刻';
       if (e && LOOSE_TIME.includes(e.type)) return '時刻（任意）';
-      return '開始時間';
+      return '開始時刻';
     };
     const endLabel = (e) => (e && e.anchor && ANCHORS[e.anchor] && ANCHORS[e.anchor].endField)
-      ? ANCHORS[e.anchor].endField : ((e && e.anchor) ? '終了時刻（任意）' : '終了時間');
+      ? ANCHORS[e.anchor].endField : ((e && e.anchor) ? '終了時刻（任意）' : '終了時刻');
     /* 到着地点で両方の時刻があれば「滞在時間」として読む */
     const stayLabel = (e) => (e && e.anchor === 'end') ? '滞在' : '';
     /* 役割つきは時刻を1つに集約し、必要なときだけ2つ目を出す */
@@ -6861,7 +6867,7 @@ JA眉山GS前|34.03774|134.51314|113
       const e = editing.value;
       if (!e) return;
       const st = toMin(e.startTime);
-      if (st === null) { flash('先に開始時間を入れてください', 'fa-triangle-exclamation'); return; }
+      if (st === null) { flash('先に開始時刻を入れてください', 'fa-triangle-exclamation'); return; }
       let base = toMin(e.endTime);
       if (base === null || base < st) base = st;
       e.endTime = minToHHMM(base + mins);
@@ -7738,19 +7744,19 @@ JA眉山GS前|34.03774|134.51314|113
       if (id === currentTripId.value) { showTripPanel.value = false; return; }
       try {
         const raw = localStorage.getItem(tripKey(id));
-        if (!raw) { flash('データが見つかりません', 'fa-triangle-exclamation'); return; }
+        if (!raw) { flash('この旅程のデータが見つかりません', 'fa-triangle-exclamation'); return; }
         if (persist) persistCurrent();
         _applyTrip(id, normalizeData(JSON.parse(raw)));
         showTripPanel.value = false;
         flash('旅程を切り替えました', 'fa-right-left');
-      } catch { flash('読み込みに失敗しました', 'fa-triangle-exclamation'); }
+      } catch { flash('読み込めませんでした', 'fa-triangle-exclamation'); }
     }
     function createNewTrip() {
       persistCurrent();
       const id = newTripId();
       const blank = _blankTrip();
       try { localStorage.setItem(tripKey(id), JSON.stringify(blank)); }
-      catch { flash('保存できませんでした（保存容量の上限かもしれません）', 'fa-triangle-exclamation'); return; }
+      catch { flash('保存できませんでした。空き容量が足りないかもしれません', 'fa-triangle-exclamation'); return; }
       if (!blank.origin && homePlace()) blank.origin = homePlace();
       tripIndex.value.push({ id, title: blank.title, startDate: '', endDate: '', origin: blank.origin || '', destination: '', status: 'wip', dayCount: 1, eventCount: 0 });
       saveTripIndex();
@@ -7762,16 +7768,16 @@ JA眉山GS前|34.03774|134.51314|113
     function duplicateTrip(id) {
       let raw = null;
       try { raw = localStorage.getItem(tripKey(id)); } catch {}
-      if (!raw) { flash('データが見つかりません', 'fa-triangle-exclamation'); return; }
+      if (!raw) { flash('この旅程のデータが見つかりません', 'fa-triangle-exclamation'); return; }
       let data;
-      try { data = normalizeData(JSON.parse(raw)); } catch { flash('読み込みに失敗しました', 'fa-triangle-exclamation'); return; }
+      try { data = normalizeData(JSON.parse(raw)); } catch { flash('読み込めませんでした', 'fa-triangle-exclamation'); return; }
       persistCurrent();
       data.title = data.title + ' のコピー';
       /* 予定のIDは振り直す（元の旅程と混ざらないように） */
       data.days.forEach(d => d.events.forEach(e => { e.id = uid(); }));
       const nid = newTripId();
       try { localStorage.setItem(tripKey(nid), JSON.stringify(data)); }
-      catch { flash('保存できませんでした（保存容量の上限かもしれません）', 'fa-triangle-exclamation'); return; }
+      catch { flash('保存できませんでした。空き容量が足りないかもしれません', 'fa-triangle-exclamation'); return; }
       tripIndex.value.push({
         id: nid, title: data.title, startDate: data.startDate, endDate: data.endDate,
         origin: data.origin, destination: data.destination, status: data.status || 'wip',
@@ -8602,7 +8608,8 @@ JA眉山GS前|34.03774|134.51314|113
 
         <!-- メイン行 -->
         <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center text-white shadow-lg shrink-0"
+          <!-- スマホ幅では、タイトルの幅を空けるためにロゴを出さない -->
+          <div class="hidden sm:grid w-10 h-10 rounded-xl place-items-center text-white shadow-lg shrink-0"
                style="background:linear-gradient(135deg,#6366f1,#a855f7)">
             <i class="fa-solid fa-route"></i>
           </div>
@@ -8683,12 +8690,8 @@ JA眉山GS前|34.03774|134.51314|113
               <i class="fa-solid fa-folder-open"></i>
             </button>
             <button @click="toggleDark" :title="isDark ? 'ライトモード' : 'ダークモード'" aria-label="表示モード切替"
-              class="tap w-9 h-9 grid place-items-center rounded-xl text-sm font-bold text-slate-500 hover:bg-white/70 transition">
-              <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
-            </button>
-            <button @click="showJsonModal = true; pullToEditor()" title="JSON の書き出し" aria-label="JSON の書き出し"
               class="tap hidden sm:grid w-9 h-9 place-items-center rounded-xl text-sm font-bold text-slate-500 hover:bg-white/70 transition">
-              <i class="fa-solid fa-code"></i>
+              <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
             </button>
             <button @click="showHelp = true" title="ショートカット一覧（?）" aria-label="ヘルプ"
               class="tap hidden lg:grid w-9 h-9 place-items-center rounded-xl text-sm font-bold text-slate-500 hover:bg-white/70 transition">
@@ -8781,7 +8784,7 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="min-w-0 flex-1">
             <div class="text-sm font-black" :class="isDark ? 'text-indigo-200' : 'text-indigo-700'">書きかけが残っています</div>
             <div class="text-[11px] font-bold mt-0.5" :class="isDark ? 'text-indigo-200/80' : 'text-indigo-600'">
-              「{{ draftFound.title || '題名なし' }}」を編集の途中で閉じたようです
+              「{{ draftFound.title || 'タイトルなし' }}」を編集の途中で閉じたようです
             </div>
           </div>
           <button @click="restoreDraft()" class="tap px-3 py-2 rounded-xl text-xs font-black text-white shadow-sm shrink-0"
@@ -8797,7 +8800,7 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="min-w-0 flex-1">
             <div class="text-sm font-black" :class="isDark ? 'text-amber-200' : 'text-amber-800'">別のタブで同じ旅程が変わりました</div>
             <div class="text-[11px] font-bold mt-0.5" :class="isDark ? 'text-amber-200/80' : 'text-amber-700'">
-              この画面で保存すると、あちらの変更が消えます。読み込み直すと、あちらの内容になります
+              このまま続けると、あちらの変更は消えます（読み込み直すと、あちらの内容になります）
             </div>
           </div>
           <button @click="reloadFromStore()" class="tap px-3 py-2 rounded-xl text-xs font-black text-white shadow-sm shrink-0"
@@ -9140,12 +9143,12 @@ JA眉山GS前|34.03774|134.51314|113
                                 ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
                                 : 'bg-amber-100 text-amber-700 hover:bg-amber-200'">
                         <i class="fa-solid" :class="issueLevelById[ev.id] === 'error' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation'"></i>
-                        {{ issueLevelById[ev.id] === 'error' ? '要修正' : '要確認' }}
+                        {{ issueLevelById[ev.id] === 'error' ? '要修正' : '注意' }}
                         <i class="fa-solid fa-arrow-right text-[8px] opacity-70"></i>
                       </button>
                       <span v-if="conflictIds.has(ev.id)" title="ほかの予定と時間が重なっています"
                             class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-white flex items-center gap-1">
-                        <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>重複
+                        <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>重なり
                       </span>
                       <span v-if="ev.cost > 0" class="text-[10px] font-black ml-auto tabular-nums flex items-center gap-1"
                             :class="ev.paid ? 'text-emerald-600' : 'text-slate-500'"
@@ -9180,7 +9183,7 @@ JA眉山GS前|34.03774|134.51314|113
                             </span>
                             <span v-if="isTransferStop(routeStops(ev), si) && transferMins(routeStops(ev), si) !== null"
                                   class="rt-tr" :class="tightTransfer(routeStops(ev), si) ? 'rt-tr-tight' : ''"
-                                  :title="quickStop(routeStops(ev), si) ? '向かいのホームで乗り継げます（対面乗換）'
+                                  :title="quickStop(routeStops(ev), si) ? '向かいのホームで乗り換えられます（対面乗換）'
                                     : (tightTransfer(routeStops(ev), si) ? '乗換時間が短めです' : 'ここで降りて乗り換えます')">
                               <i class="fa-solid text-[8px] mr-0.5" :class="quickStop(routeStops(ev), si) ? 'fa-right-left' : 'fa-arrows-rotate'"></i>{{ (quickStop(routeStops(ev), si) ? '対面乗換 ' : '乗換 ') + fmtMin(transferMins(routeStops(ev), si)) }}
                             </span>
@@ -9583,7 +9586,7 @@ JA眉山GS前|34.03774|134.51314|113
 
             <div class="grid grid-cols-2 gap-2 mt-3">
               <label class="block">
-                <span class="text-[11px] font-bold text-slate-500">総予算 (¥)</span>
+                <span class="text-[11px] font-bold text-slate-500">総予算（円）</span>
                 <input type="number" v-model.number="state.totalBudget" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 outline-none" />
               </label>
               <label class="block">
@@ -9593,7 +9596,7 @@ JA眉山GS前|34.03774|134.51314|113
               </label>
             </div>
             <p v-if="members > 1" class="text-[10px] text-slate-400 leading-relaxed">
-              費用は総額で入力してください。2人以上のときは「1人あたり」も表示されます。
+              費用は人数ぶんの合計で入れてください（2人以上なら「1人あたり」も出ます）。
             </p>
           </div>
 
@@ -9714,9 +9717,8 @@ JA眉山GS前|34.03774|134.51314|113
               </label>
             </div>
             <div class="text-[10px] text-slate-400 mt-2 leading-relaxed">
-              文字は縮めません。予定ひとつぶんの高さを測って段に詰めるので、
-              予定が途中で切れたり、見出しだけの紙が出たりしません。
-              「自動」なら、いちばん少ない枚数になる段数をえらび、2枚以上になるときは1枚を3〜4段にします
+              「自動」は、紙がいちばん少なくなる段数を選びます（2枚以上になるときは1枚を3〜4段に）。
+              文字の大きさは変えず、予定が紙の途中で切れることもありません
             </div>
             <!-- 刷る前に、何枚になるかの見当をつけられるように -->
             <div class="mt-2 flex items-center gap-2 flex-wrap">
@@ -9731,6 +9733,25 @@ JA眉山GS前|34.03774|134.51314|113
                 <span class="text-slate-400">（等倍）</span>
               </span>
             </div>
+          </div>
+
+          <!-- 版 -->
+          <div class="mt-5 pt-4 border-t flex items-center gap-2 flex-wrap" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
+            <span class="text-xs font-black text-ink"><i class="fa-solid fa-code-branch text-indigo-400 mr-1"></i>バージョン v{{ APP_VERSION }}</span>
+            <button @click="openChangelog()" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
+            <p class="w-full text-[11px] text-slate-500 leading-relaxed">
+              <i class="fa-solid fa-wifi mr-1"></i>
+              <template v-if="!swState.https">圏外で使えるのは、公開ページ（https）で開いたときです。スマホへは「スマホで開く」から送れます。</template>
+              <template v-else-if="!swVersion">圏外でも開けるよう、この端末に保存しています。</template>
+              <template v-else-if="swVersion === APP_VERSION">圏外でも開けます（v{{ swVersion }} をこの端末に保存済み）。</template>
+              <template v-else>この端末に保存されている版は v{{ swVersion }} です。読み込み直すと v{{ APP_VERSION }} に切り替わります。</template>
+            </p>
+            <button @click="toggleDark" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>{{ isDark ? '明るい画面にする' : '暗い画面にする' }}</button>
+            <button @click="showSettings = false; showJsonModal = true; pullToEditor()" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-shield-halved"></i>バックアップと書き出し</button>
+            <button @click="showSettings = false; openShare()" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-mobile-screen-button"></i>スマホで開く（リンク・QRコード）</button>
           </div>
 
           <button @click="showSettings=false"
@@ -9825,7 +9846,7 @@ JA眉山GS前|34.03774|134.51314|113
                         @click="fixByTimetable(iss)"
                         class="tap px-3 py-2 rounded-xl text-xs font-black text-white shadow-sm"
                         :style="{background: CATS.train.color}">
-                  <i class="fa-solid fa-magnifying-glass mr-1"></i>時刻表からえらび直す
+                  <i class="fa-solid fa-magnifying-glass mr-1"></i>時刻表から選び直す
                 </button>
                 <button v-if="iss.type === 'overlap'" @click="toggleIgnoreOverlap(fixDlg.dayIdx); fixDlg.open = false"
                         class="tap fx-btn">
@@ -9849,7 +9870,7 @@ JA眉山GS前|34.03774|134.51314|113
 
     <!-- ============ 列車をえらぶ（時刻表） ============ -->
     <transition name="fade">
-      <div v-if="tw.open" data-modal="train" role="dialog" aria-modal="true" aria-label="列車をえらぶ"
+      <div v-if="tw.open" data-modal="train" role="dialog" aria-modal="true" aria-label="列車を選ぶ"
            class="no-print fixed inset-0 z-[60] grid place-items-center p-3 sm:p-4">
         <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" @click="tw.open = false"></div>
         <div class="relative glass rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-5">
@@ -9860,10 +9881,10 @@ JA眉山GS前|34.03774|134.51314|113
               <i class="fa-solid" :class="tw.kind === 'bus' ? 'fa-bus' : 'fa-train-subway'"></i>
             </span>
             <div class="min-w-0">
-              <div class="text-base font-black text-ink">{{ twWord.train }}をえらぶ</div>
+              <div class="text-base font-black text-ink">{{ twWord.train }}を選ぶ</div>
               <div class="text-[10px] font-bold text-slate-400">
                 <span v-if="tw.from">{{ tw.from }}</span><span v-if="tw.railTitle"> ／ {{ tw.railTitle }}</span><span v-if="tw.to"> → {{ tw.to }}</span>
-                <span v-else-if="!tw.from">出発する{{ twWord.spot }}から順にえらびます</span>
+                <span v-else-if="!tw.from">出発する{{ twWord.spot }}から順に選びます</span>
               </div>
             </div>
             <span v-if="tw.loading" class="ml-auto text-[10px] font-bold text-slate-400">
@@ -10064,7 +10085,7 @@ JA眉山GS前|34.03774|134.51314|113
 
     <!-- ============ JSON 入出力モーダル ============ -->
     <transition name="fade">
-      <div v-if="showJsonModal" data-modal="json" role="dialog" aria-modal="true" aria-label="JSON の書き出し・バックアップ" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
+      <div v-if="showJsonModal" data-modal="json" role="dialog" aria-modal="true" aria-label="バックアップと書き出し" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="showJsonModal=false">
         <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
@@ -10073,7 +10094,7 @@ JA眉山GS前|34.03774|134.51314|113
                  style="background:linear-gradient(135deg,#6366f1,#a855f7)">
               <i class="fa-solid fa-file-code"></i>
             </div>
-            <h2 class="font-black text-ink text-lg">JSON の書き出し・バックアップ</h2>
+            <h2 class="font-black text-ink text-lg">バックアップと書き出し</h2>
             <button @click="showJsonModal=false" aria-label="閉じる" class="ml-auto w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100">
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -10098,7 +10119,7 @@ JA眉山GS前|34.03774|134.51314|113
             <i class="fa-solid fa-download"></i>ファイルに書き出す
           </button>
           <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
-            控えとして残しておくためのものです。書き出したJSONは、このアプリの他の旅程と同じ形なので、あとから中身を確かめられます
+            いま開いている旅程だけを JSON の形で書き出します。中身を確かめたいときや、ほかのアプリに渡したいときに使います
           </p>
 
           <!-- 全旅程バックアップ／復元：Cookie削除などで置き場ごと消えたときの保険 -->
@@ -10124,27 +10145,13 @@ JA眉山GS前|34.03774|134.51314|113
             <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
               復元は「追加」されます（今ある旅程は消えません）。復元した旅程は、旅程の管理から開けます
             </p>
-            <div v-if="brokenCount" class="mt-3 rounded-xl px-3 py-2.5 text-xs font-bold flex items-center gap-2 flex-wrap bg-amber-50 text-amber-800 border border-amber-200">
+            <div v-if="brokenCount" class="mt-3 rounded-xl px-3 py-2.5 text-xs font-bold flex items-center gap-2 flex-wrap bg-amber-50 text-amber-700 border border-amber-200">
               <i class="fa-solid fa-triangle-exclamation"></i>
               <span class="flex-1 min-w-[10rem]">読めなかった旅程の控えが {{ brokenCount }} 件あります</span>
               <button @click="downloadBroken()" class="px-3 py-1.5 rounded-lg bg-white border border-amber-300 hover:bg-amber-100">控えを書き出す</button>
             </div>
           </div>
 
-          <!-- 版 -->
-          <div class="mt-5 pt-4 border-t flex items-center gap-2 flex-wrap" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
-            <span class="text-xs font-black text-ink"><i class="fa-solid fa-code-branch text-indigo-400 mr-1"></i>バージョン v{{ APP_VERSION }}</span>
-            <button @click="openChangelog()" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
-            <p class="w-full text-[11px] text-slate-500 leading-relaxed">
-              <i class="fa-solid fa-wifi mr-1"></i>
-              <template v-if="!swState.https">圏外で使えるのは、公開ページ（https）で開いたときです。スマホへは「スマホで開く」から送れます。</template>
-              <template v-else-if="!swVersion">圏外でも開けるよう、この端末に保存しています。</template>
-              <template v-else-if="swVersion === APP_VERSION">圏外でも開けます（v{{ swVersion }} をこの端末に保存済み）。</template>
-              <template v-else>この端末に保存されている版は v{{ swVersion }} です。読み込み直すと v{{ APP_VERSION }} に切り替わります。</template>
-            </p>
-            <button @click="showSettings = false; openShare()" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
-              <i class="fa-solid fa-mobile-screen-button"></i>スマホで開く（リンク・QRコード）</button>
-          </div>
         </div>
       </div>
     </transition>
@@ -10248,8 +10255,8 @@ JA眉山GS前|34.03774|134.51314|113
             </div>
               <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
                 <i class="fa-solid fa-circle-info mr-0.5"></i>
-                <template v-if="editing.anchor">{{ anchorCfg(editing.anchor).label }}はリスト・印刷で強調表示されます</template>
-                <template v-else>1日の起点・終点にする予定は「出発地点／到着地点」を選ぶと強調表示されます</template>
+                <template v-if="editing.anchor">{{ anchorCfg(editing.anchor).label }}は、一覧と印刷で目立つように出ます</template>
+                <template v-else>1日の起点・終点にしたい予定は「出発地点／到着地点」を選んでください（一覧と印刷で目立つように出ます）</template>
               </p>
             </div>
           </div>
@@ -10412,7 +10419,7 @@ JA眉山GS前|34.03774|134.51314|113
                 :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#64748b'}">
                 +{{ fmtMin(m) }}
               </button>
-              <button v-if="editing.endTime" @click="clearEnd" title="終了時間を空にする"
+              <button v-if="editing.endTime" @click="clearEnd" title="終了時刻を空にする"
                 class="tap px-2 py-1 rounded-lg text-[11px] font-bold text-rose-400 hover:text-rose-600 transition">
                 <i class="fa-solid fa-eraser mr-0.5"></i>クリア
               </button>
@@ -10447,7 +10454,7 @@ JA眉山GS前|34.03774|134.51314|113
                 <i class="fa-solid fa-diagram-project mr-1.5"></i>経路をつくる
               </button>
               <div class="text-[10px] text-slate-400 mt-2.5 leading-relaxed">
-                駅ごとに 着ホーム・発ホーム・乗る列車・乗換の猶予 を書けます。<br>
+                駅ごとに、着くホーム・出るホーム・乗る列車・乗り換えの時間を書けます。<br>
                 場所欄の「{{ editing.location || 'A → B' }}」から{{ (editing.location || '').match(/→|->|〜|~/) ? '2駅' : '1駅' }}ぶん用意します
               </div>
             </div>
@@ -10484,8 +10491,8 @@ JA眉山GS前|34.03774|134.51314|113
                     </button>
                     <button v-if="si > 0 && si < editing.route.length - 1 && !st.through"
                             @click="toggleQuick(st)"
-                            :title="st.quick ? '向かいのホームで乗り継げる駅として覚えています。押すとふつうの乗換に戻します'
-                                             : '降りたホームの向かい（または同じホーム）で乗り継げるなら、押してください。1〜2分でも短すぎるとは言わなくなります'"
+                            :title="st.quick ? '向かいのホームで乗り換えられる駅として覚えています。押すとふつうの乗換に戻します'
+                                             : '降りたホームの向かい（または同じホーム）で乗り換えられるなら、押してください。1〜2分でも短すぎるとは言わなくなります'"
                             class="tap shrink-0 text-[10px] font-black px-2 py-1 rounded-lg border transition"
                             :class="st.quick
                               ? 'text-sky-700 border-sky-300 bg-sky-50'
@@ -10621,8 +10628,8 @@ JA眉山GS前|34.03774|134.51314|113
                                 class="tap ml-auto text-[11px] font-black px-2.5 py-1.5 rounded-lg transition"
                                 :class="st.name ? 'text-white' : 'text-slate-400 cursor-not-allowed'"
                                 :style="st.name ? {background: cat(editing.type).color} : {background: isDark ? '#334155' : '#e2e8f0'}"
-                                title="時刻表から、路線・行先・列車をえらぶ">
-                          <i class="fa-solid fa-magnifying-glass mr-0.5"></i>{{ editing.type === 'bus' ? '時刻表から便をえらぶ' : '時刻表からえらぶ' }}
+                                title="時刻表から、路線・行先・列車を選ぶ">
+                          <i class="fa-solid fa-magnifying-glass mr-0.5"></i>{{ editing.type === 'bus' ? '時刻表から便を選ぶ' : '時刻表から選ぶ' }}
                         </button>
                       </div>
                       <div class="grid grid-cols-2 gap-1.5">
@@ -10769,7 +10776,7 @@ JA眉山GS前|34.03774|134.51314|113
               </div>
             </label>
             <label class="block">
-              <span class="text-xs font-bold text-slate-500">費用 (¥)</span>
+              <span class="text-xs font-bold text-slate-500">費用（円）</span>
               <input type="number" v-model.number="editing.cost" min="0" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-400 outline-none" />
             </label>
           </div>
@@ -10785,7 +10792,7 @@ JA眉山GS前|34.03774|134.51314|113
               {{ editing.paid ? '支払い済（出発前に決済）' : '支払い済にする' }}
             </button>
             <div class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-              印は合計から外れません。<b>当日いくら要るか</b>を「未払い」として別に出します
+              支払い済にしても合計からは外れません。<b>当日いくら要るか</b>を「当日」として別に出します
             </div>
           </div>
 
@@ -10967,7 +10974,7 @@ JA眉山GS前|34.03774|134.51314|113
           <button @click="pickAdd('train')"
             class="tap mt-2 w-full rounded-xl py-2.5 px-3 text-sm font-bold border-2 transition hover:shadow-md flex items-center gap-2"
             :style="{borderColor: CATS.train.color, color: CATS.train.color, background: isDark ? 'rgba(59,130,246,0.14)' : '#eaf1ff'}">
-            <i class="fa-solid fa-magnifying-glass"></i>時刻表から列車・バスをえらぶ
+            <i class="fa-solid fa-magnifying-glass"></i>時刻表から列車・バスを選ぶ
             <span class="text-[10px] font-medium opacity-70 ml-auto">駅／バス停→路線→行き先→便</span>
           </button>
           <button v-if="addMenuAtEnd" @click="pickAdd('route')"
@@ -11034,7 +11041,7 @@ JA眉山GS前|34.03774|134.51314|113
             <!-- STEP 1：ここでの滞在 -->
             <div class="flex items-center gap-2 mb-1.5">
               <span class="w-5 h-5 rounded-full grid place-items-center text-[10px] font-black text-white shrink-0" style="background:#6366f1">1</span>
-              <span class="text-xs font-bold text-slate-500">「{{ moveWizard.from || 'ここ' }}」を出るのはいつ？</span>
+              <span class="text-xs font-bold text-slate-500">「{{ moveWizard.from || 'ここ' }}」を出るのは何時ですか？</span>
             </div>
             <div class="rounded-2xl border p-3" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
               <div class="flex items-end gap-2">
@@ -11241,7 +11248,7 @@ JA眉山GS前|34.03774|134.51314|113
             </button>
           </div>
           <p v-else class="text-[10px] text-slate-400 mt-2 leading-relaxed">
-            <i class="fa-solid fa-circle-info mr-0.5"></i>選ぶと、地点・時刻（前後の予定から）・乗換の1区間目まで入った状態で詳細入力に進みます
+            <i class="fa-solid fa-circle-info mr-0.5"></i>選ぶと、地点と時刻（前後の予定から）・乗換の1区間目までを入れた状態で、編集画面が開きます
           </p>
 
           <button @click="moveWizard.open=false"
@@ -11496,7 +11503,7 @@ JA眉山GS前|34.03774|134.51314|113
               <div class="inline-block p-2 rounded-2xl bg-white" v-html="share.qr"></div>
               <div class="text-[11px] text-slate-500 mt-1.5">スマホのカメラで読み取ってください</div>
             </div>
-            <div v-else class="mt-4 rounded-xl px-3 py-2.5 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 leading-relaxed">
+            <div v-else class="mt-4 rounded-xl px-3 py-2.5 text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 leading-relaxed">
               <i class="fa-solid fa-circle-info mr-1"></i>予定が多くて QR コードに入りきりません。下のボタンでリンクをコピーし、LINE などで自分あてに送ってから、スマホで開いてください。
             </div>
             <input :value="share.url" readonly aria-label="旅程のリンク" @focus="$event.target.select()"
@@ -11572,7 +11579,7 @@ JA眉山GS前|34.03774|134.51314|113
               <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="font-black text-ink">v{{ c.v }}</span>
                 <span class="text-[11px] text-slate-500">{{ c.date }}</span>
-                <span v-if="changelog.since && verCmp(c.v, changelog.since) > 0" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500 text-white">NEW</span>
+                <span v-if="changelog.since && verCmp(c.v, changelog.since) > 0" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-600 text-white">NEW</span>
               </div>
               <div class="text-xs font-bold text-slate-600 mt-0.5">{{ c.title }}</div>
               <ul class="mt-2 space-y-1.5">
@@ -11619,6 +11626,8 @@ JA眉山GS前|34.03774|134.51314|113
           <div class="mt-5 pt-4 border-t" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
             <div class="text-[11px] font-black text-slate-500 mb-2"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>ちょっとしたコツ</div>
             <ul class="text-[11px] text-slate-500 font-medium space-y-1.5 leading-relaxed">
+              <li>・旅の当日は、上の <b class="text-ink"><i class="fa-solid fa-person-walking-luggage"></i> 当日モード</b>で、いまの予定・次の予定・乗換までの残り時間を大きく出せます。</li>
+              <li>・スマホへは、設定の<b class="text-ink">「スマホで開く」</b>からリンクか QR コードで送れます。スマホで一度開けば、圏外でも見られます。</li>
               <li>・予定カードは<b class="text-ink">ドラッグ</b>のほか、カード内の <b class="text-ink">▲▼</b> でも並べ替えできます。</li>
               <li>・カードの <b class="text-ink">⋯</b> から「別の日へ移動」「複製」ができます。</li>
               <li>・地点を足すと、前の地点との<b class="text-ink">移動手段をたずねます</b>。</li>
@@ -11627,14 +11636,14 @@ JA眉山GS前|34.03774|134.51314|113
               <li>・空の日は「<b class="text-ink">ルートを作る</b>」で、出発地点・移動・到着地点をまとめて作れます。</li>
               <li>・いちばん下の予定の「<b class="text-ink">ここから次へ</b>」で、滞在時間を決めて次の行き先へ続けられます。</li>
               <li>・日付を変更すると、<b class="text-ink">それ以降の日程も同じ日数だけ自動でずれます</b>。</li>
-              <li>・予定の時間が重なると <span class="text-amber-500 font-bold">重複バッジ</span> と警告が出ます。</li>
-              <li>・時刻を変えた予定だけ自動で並び替わります。手動の並び順は保持されます。</li>
-              <li>・削除や並べ替えは <b class="text-ink">Ctrl+Z</b>（またはトーストの「元に戻す」）で戻せます。</li>
+              <li>・予定の時間が重なると、カードに <span class="text-amber-500 font-bold">重なり</span> の印と注意が出ます。</li>
+              <li>・時刻を変えた予定だけ、自動で時刻順の位置に移ります。自分で並べた順はそのまま残ります。</li>
+              <li>・削除や並べ替えは <b class="text-ink">Ctrl+Z</b>（または画面下の知らせの「元に戻す」）で戻せます。</li>
               <li>・列車が遅れたら、カードの <b class="text-ink">⋯ → ここから後ろをずらす</b>。その予定より後ろを、乗換の時刻ごとまとめて動かします。</li>
               <li>・編集画面の<b class="text-ink">「前後のつながり」</b>で、前の到着地・次の出発時刻に1タップで合わせられます。</li>
               <li>・路線が変わっても降りない列車は、途中駅のバッジを押して <b class="text-ink">直通</b> に。1本の列車としてまとめて印刷されます。</li>
               <li>・書きかけのまま閉じようとすると<b class="text-ink">確かめてから</b>閉じます。閉じてしまっても、次に開くと<b class="text-ink">書きかけを戻せます</b>。</li>
-              <li>・印刷は<b class="text-ink">読みやすさを優先</b>します。1枚に入らないときは、文字を潰さずにページを増やします（設定で下限を変えられます）。</li>
+              <li>・印刷は<b class="text-ink">読みやすさを優先</b>します。1枚に入らないときは、文字を小さくせずに紙を増やします。</li>
             </ul>
           </div>
 
