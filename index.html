@@ -7588,7 +7588,7 @@ JA眉山GS前|34.03774|134.51314|113
     const LS_CLOUD = 'trip_cloud_v1';
     const LS_CLOUD_BASE = 'trip_cloud_base_v1';
     /* 自分の GAS の URL をここに入れておくと、Cookie を消したあとも合言葉だけで戻せる */
-    const CLOUD_URL_DEFAULT = '';
+    const CLOUD_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwjOSCGSy580Pg_pnvgqCSMp6VxpzahWbg-_Hg9j2MBnsLFS54panQWdpk8f5BrOIV_Iw/exec';
     const CLOUD_WAIT = 4000;                // 直してから送るまでの待ち（打っている途中で送らない）
     const cloud = reactive(Object.assign(
       { url: '', phrase: '', updated: 0, lastAt: 0, code: '' },
@@ -9118,7 +9118,7 @@ JA眉山GS前|34.03774|134.51314|113
         <i class="fa-solid fa-cloud-arrow-down mt-0.5" :class="isDark ? 'text-indigo-300' : 'text-indigo-600'"></i>
         <div class="flex-1 min-w-[14rem]">
           <div class="text-sm font-black text-ink">前に作った旅程を戻せます</div>
-          <div class="text-xs text-slate-600 mt-0.5 leading-relaxed">クラウドに保存していたなら合言葉で、バックアップのファイルがあればそのファイルから戻せます。</div>
+          <div class="text-xs text-slate-600 mt-0.5 leading-relaxed">クラウドに保存していたなら合言葉を入れるだけで、バックアップのファイルがあればそのファイルから戻せます。</div>
         </div>
         <div class="flex gap-2 flex-wrap">
           <button @click="openCloudRestore()"

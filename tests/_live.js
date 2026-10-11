@@ -2,6 +2,10 @@
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const SITE = 'https://ogusout410541-dotcom.github.io/trip-planner/';
+const path = require('path');
+const ROOT = path.join(__dirname, '..');
+const VER = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/const APP_VERSION = '([^']+)'/)[1];
+const ASSETS = (fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').match(/const ASSETS = \[([\s\S]*?)\];/)[1].match(/'[^']+'/g) || []).length;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = (p, fn, ...a) => p.evaluate((src, a) => (0, eval)('(' + src + ')')(document.querySelector('#app')._vnode.component.setupState, ...a), fn.toString(), a);
 (async () => {
@@ -16,11 +20,11 @@ const A = (p, fn, ...a) => p.evaluate((src, a) => (0, eval)('(' + src + ')')(doc
   await ph.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   await ph.goto(SITE, { waitUntil: 'networkidle0' });
   await ph.waitForFunction(() => document.querySelector('#app')._vnode);
-  ok(await A(ph, A => A.APP_VERSION) === '1.1.0', '公開ページが v1.1.0');
+  ok(await A(ph, A => A.APP_VERSION) === VER, '公開ページが手元と同じ v' + VER);
   await ph.waitForFunction(() => !!navigator.serviceWorker.controller, { timeout: 30000 }).catch(() => {});
   await sleep(1500);
   const sw = await A(ph, A => ({ cache: A.swState.cache, count: A.swState.count, https: A.swState.https }));
-  ok(sw.cache === 'trip-v1.1.0' && sw.count === 13, '圏外用に一式が保存される', sw);
+  ok(sw.cache === 'trip-v' + VER && sw.count === ASSETS, '圏外用に一式が保存される', sw);
   const man = await ph.evaluate(async () => (await fetch('manifest.webmanifest')).ok && (await fetch('icons/icon-192.png')).ok);
   ok(man, 'マニフェストとアイコンが届く');
   // ② 圏外で開き直す
