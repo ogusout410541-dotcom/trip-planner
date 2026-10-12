@@ -739,8 +739,14 @@ const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextT
 /* ---------- 版とアップデート履歴 ----------
    リリースのたびに APP_VERSION と sw.js の CACHE を同じ番号に上げ、CHANGELOG の先頭に1件足す。
    tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const CHANGELOG = [
+  { v: '1.4.0', date: '2026-10-12', title: '遅れてもライブや電車の時刻は動かさない', items: [
+    ['fix', '遅れを入れると、そのあとのライブの開場や電車の発車時刻までずらしていました。いまは「時刻を動かさない予定」の手前で止めます'],
+    ['new', 'イベントと、電車・バス・飛行機・船は、最初から「時刻を動かさない予定」にしました。予定ごとに編集画面で切り替えられ、カードには「固定」と出ます'],
+    ['new', '遅れでライブに食い込むときは何分食い込むかを、電車に間に合わないときは「間に合いません」と知らせます'],
+    ['up', '「ここから後ろをずらす」と当日モードの「遅れを入れる」に、どこまでずらすかを出しました'],
+  ] },
   { v: '1.3.0', date: '2026-10-12', title: 'スマホで作りやすく', items: [
     ['up', '予定の編集で、「保存」と「キャンセル」をいつも画面の下に出すようにしました。長い予定でも一番下までスクロールしなくて済みます'],
     ['up', 'すでにある予定を開いたときは、カテゴリを1行にたたみました。タイトルと時刻がすぐ上に出ます'],
@@ -1111,6 +1117,8 @@ createApp({
           if (Array.isArray(e.route)) e.route = e.route.filter(isObj);
           e.crossOk = !!e.crossOk;          // 日をまたぐ予定だと確かめ済みか
           e.paid = !!e.paid;                // 出発前に払い終えているか（きっぷ・宿・チケット）
+          /* 時刻を動かさない予定か。null＝カテゴリで決める（イベント・時刻表どおりに出る乗り物）／true／false＝本人が決めた */
+          e.fixed = (e.fixed === true || e.fixed === false) ? e.fixed : null;
           e.anchor = ['start','end'].includes(e.anchor) ? e.anchor : '';
           /* 経路は「駅の並び」。各駅は、着（ホーム・時刻）／発（ホーム・時刻）と、
              その駅から乗る列車（路線・行先・駅数）を持つ。乗換は1つの駅の中で完結する */
@@ -6704,7 +6712,7 @@ JA眉山GS前|34.03774|134.51314|113
     function newEvent() {
       /* 読み込み時に足される項目（crossOk など）も最初から持たせて、
          新しく作った予定と、読み込んだ予定で形をそろえる */
-      return { id: uid(), type: 'activity', startTime: '', endTime: '', title: '', location: '', cost: 0, paid: false, notes: '', url: '', platform: '', direction: '', stations: '', flightNo: '', seat: '', anchor: '', crossOk: false, route: [] };
+      return { id: uid(), type: 'activity', startTime: '', endTime: '', title: '', location: '', cost: 0, paid: false, notes: '', url: '', platform: '', direction: '', stations: '', flightNo: '', seat: '', anchor: '', crossOk: false, fixed: null, route: [] };
     }
     function openAdd(dayIdx, anchor = '', insertAt = null) {
       editingDayIdx.value = dayIdx;
@@ -7305,12 +7313,33 @@ JA眉山GS前|34.03774|134.51314|113
        列車が遅れた・ライブが押した、というときに、そこから先を丸ごと動かせる。
        乗換チェーンの時刻も一緒に動かす（動かさないと経路と予定がずれる） */
     const rippleFor = ref('');
+    /* ---- 時刻を動かさない予定 ----
+       ライブの開場や、時刻表どおりに出る電車・バス・飛行機・船は、自分が遅れても時刻は変わらない。
+       遅れを入れるときは、その手前で止める（以前は後ろを全部ずらし、ライブの開場まで書き換えていた） */
+    const FIXED_TYPES = ['activity', 'train', 'bus', 'plane', 'ship'];
+    const isFixed = (e) => !!e && ((e.fixed === true || e.fixed === false) ? e.fixed : FIXED_TYPES.includes(e.type));
+    const hasTimes = (e) => !!(e.startTime || e.endTime || (e.route || []).some(st => st.arrTime || st.depTime));
+    /* その予定から後ろで、遅れを伝える範囲。押した予定そのものは（動かさない予定でも）ずらし、
+       そのあとは次の「動かさない予定」の手前まで。stop＝止めた予定 */
+    function rippleRange(day, ev) {
+      const at = day.events.findIndex(x => x.id === ev.id);
+      if (at < 0) return { targets: [], stop: null };
+      const targets = [];
+      let stop = null;
+      for (let i = at; i < day.events.length; i++) {
+        const e = day.events[i];
+        if (i > at && isFixed(e) && hasTimes(e)) { stop = e; break; }
+        if (hasTimes(e)) targets.push(e);
+      }
+      return { targets, stop };
+    }
+    /* その予定が始まる時刻（電車なら最初の発車） */
+    const firstTime = (e) => e.startTime || ((e.route || []).find(st => st.depTime) || {}).depTime || '';
+    const lastTime = (e) => e.endTime || ([...(e.route || [])].reverse().find(st => st.arrTime || st.depTime) || {}).arrTime || e.startTime || '';
     function shiftFrom(dayIdx, ev, mins) {
       const day = state.days[dayIdx];
       if (!day) return;
-      const at = day.events.findIndex(x => x.id === ev.id);
-      if (at < 0) return;
-      const targets = day.events.slice(at).filter(e => e.startTime || e.endTime || (e.route || []).some(st => st.arrTime || st.depTime));
+      const { targets, stop } = rippleRange(day, ev);
       if (!targets.length) { flash('ずらす時刻がありません', 'fa-circle-info'); return; }
       snapshot('ここから後ろをずらす');
       const bump = (t) => { const m = toMin(t); return m === null ? t : minToHHMM(m + mins); };
@@ -7324,9 +7353,27 @@ JA眉山GS前|34.03774|134.51314|113
       });
       rippleFor.value = '';
       menuFor.value = '';
-      flash(`${targets.length}件を ${mins > 0 ? '+' : '−'}${fmtMin(Math.abs(mins))} ずらしました`,
-            'fa-clock-rotate-left', { label: '元に戻す', fn: undo });
+      /* 動かさない予定に食い込んだら知らせる（電車なら、間に合わない） */
+      let msg = `${targets.length}件を ${mins > 0 ? '+' : '−'}${fmtMin(Math.abs(mins))} ずらしました`;
+      if (stop) {
+        const last = targets[targets.length - 1];
+        const endM = toMin(lastTime(last)), stopM = toMin(firstTime(stop));
+        const over = (endM !== null && stopM !== null) ? endM - stopM : null;
+        const nm = shortName(stop.title || cat(stop.type).label);
+        if (over !== null && over > 0 && over < 720) {
+          msg = ['train', 'bus', 'plane', 'ship'].includes(stop.type)
+            ? `「${nm}」（${firstTime(stop)}発）に間に合いません（${fmtMin(over)}足りません）。乗る便を選び直してください`
+            : `「${nm}」（${firstTime(stop)}）に${fmtMin(over)}食い込みます。「${nm}」の時刻は動かしていません`;
+        } else msg += `。「${nm}」（${firstTime(stop)}）は動かさない予定なので、その手前まで`;
+      }
+      flash(msg, (stop && msg.includes('食い込み')) || msg.includes('間に合いません') ? 'fa-triangle-exclamation' : 'fa-clock-rotate-left', { label: '元に戻す', fn: undo });
     }
+    /* 「時刻を動かさない」の切り替え（カテゴリの既定と同じになったら null に戻す） */
+    function toggleFixed(e) {
+      const next = !isFixed(e);
+      e.fixed = (next === FIXED_TYPES.includes(e.type)) ? null : next;
+    }
+
 
     /* ---------- 当日モード（旅の最中にスマホで見る画面） ----------
        「いま」と「次」と「乗換までの残り時間」を大きく出す。編集はせず、遅れの反映だけここでできる。
@@ -8937,7 +8984,7 @@ JA眉山GS前|34.03774|134.51314|113
       copyJson, downloadJson, pullToEditor, persistCurrent, saveError,
       downloadAllBackup, onImportFile, lastBackupAt, brokenCount, downloadBroken,
       APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog, issuesOpen, dayOpsOpen,
-      onCardClick, dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
+      onCardClick, isFixed, toggleFixed, rippleRange, FIXED_TYPES, dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
       share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
       swState, swVersion, ink,
       cloud, cloudOn, cloudSync, openCloudForm, connectCloud, cloudChoose, disconnectCloud, shareCloudConf, showRestoreHint, CLOUD_URL_DEFAULT, openCloudRestore,
@@ -9539,6 +9586,8 @@ JA眉山GS前|34.03774|134.51314|113
                     <div v-if="ev.anchor" class="text-[9px] font-black leading-none mb-1 tracking-wider"
                          :style="{color: ink(anchorCfg(ev.anchor).color)}">{{ ANCHORS[ev.anchor].timeLabel }}</div>
                     <div class="font-black text-ink tabular-nums leading-none">{{ ev.startTime || '—' }}</div>
+                    <div v-if="isFixed(ev) && ev.startTime" class="text-[9px] font-bold text-slate-400 mt-1" title="時刻を動かさない予定です。遅れを入れても、この予定はずらしません">
+                      <i class="fa-solid fa-lock"></i> 固定</div>
                     <div v-if="ev.endTime" class="text-[11px] font-bold tabular-nums mt-1"
                          :class="crossesDay(ev) ? 'text-amber-600' : 'text-slate-400'"
                          :title="crossesDay(ev) ? '翌日の時刻です' : ''">{{ nextMark(ev) }}{{ ev.endTime }}</div>
@@ -9718,7 +9767,9 @@ JA眉山GS前|34.03774|134.51314|113
                               <i class="fa-solid fa-chevron-down text-[8px] ml-auto opacity-50" :class="rippleFor === ev.id ? 'fa-rotate-180' : ''"></i>
                             </button>
                             <div v-if="rippleFor === ev.id" class="px-2 pb-1.5">
-                              <div class="text-[10px] font-bold text-slate-400 px-1 pb-1">この予定と、これより後ろぜんぶ</div>
+                              <div class="text-[10px] font-bold text-slate-400 px-1 pb-1">
+                                この予定から{{ rippleRange(day, ev).stop ? '、「' + shortName(rippleRange(day, ev).stop.title) + '」（動かさない予定）の手前まで' : '、これより後ろぜんぶ' }}
+                              </div>
                               <div class="grid grid-cols-4 gap-1">
                                 <button v-for="mm in SHIFT_STEPS" :key="'rf'+ev.id+mm" @click="shiftFrom(di, ev, mm)"
                                         class="tap py-1.5 rounded-lg text-[11px] font-black transition"
@@ -10813,6 +10864,14 @@ JA眉山GS前|34.03774|134.51314|113
               <input type="time" v-model="editing.endTime" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-400 outline-none" />
             </label>
           </div>
+          <!-- 時刻を動かさない（遅れを入れても、この予定はずらさない） -->
+          <label class="mb-3 flex items-start gap-2 cursor-pointer rounded-xl px-3 py-2" :class="isDark ? 'bg-slate-800/60' : 'bg-slate-50'">
+            <input type="checkbox" :checked="isFixed(editing)" @change="toggleFixed(editing)" class="mt-0.5 w-4 h-4 accent-indigo-600 shrink-0">
+            <span class="text-xs leading-relaxed">
+              <b class="text-ink"><i class="fa-solid fa-lock text-[10px] mr-1 text-slate-400"></i>時刻を動かさない</b>
+              <span class="block text-slate-500">遅れを入れても、この予定の時刻はずらしません（ライブの開場や、時刻表どおりに出る乗り物など）。前の予定が食い込んだら知らせます</span>
+            </span>
+          </label>
           <!-- 前後の予定とのつながり -->
           <div v-if="linkState.prev || linkState.next" class="lk-panel mb-3 rounded-xl px-3 py-2.5"
                :class="isDark ? 'bg-slate-800/60' : 'bg-slate-50'">
@@ -11953,7 +12012,7 @@ JA眉山GS前|34.03774|134.51314|113
       <!-- 親指の届くところに固定 -->
       <div class="dm-bar">
         <div v-if="dayMode.delayOpen && dmFocus" class="dm-delay" role="group" aria-label="遅れを入れる">
-          <div class="dm-delay-head">「{{ dmFocus.e.title }}」から後ろの時刻をずらします</div>
+          <div class="dm-delay-head">「{{ dmFocus.e.title }}」から{{ rippleRange(dm.day, dmFocus.e).stop ? '、「' + rippleRange(dm.day, dmFocus.e).stop.title + '」の手前まで' : '後ろ' }}の時刻をずらします<template v-if="rippleRange(dm.day, dmFocus.e).stop">（「{{ rippleRange(dm.day, dmFocus.e).stop.title }}」は動かさない予定です）</template></div>
           <div class="grid grid-cols-5 gap-1.5">
             <button v-for="m in [5, 10, 15, 30, -5]" :key="'dmdl' + m" class="dm-delay-btn" @click="dayModeDelay(m)">{{ m > 0 ? '+' + m : '−' + (-m) }}分</button>
           </div>

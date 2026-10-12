@@ -71,7 +71,7 @@ const pick = (A) => {
       await sleep(50);
       const after = await app(page, A => A.state.days[0].events.map(e => e.startTime + '|' + (e.route || []).map(s => s.depTime).join(',')));
       t.ok(after[0].startsWith('07:10|07:10,07:30'), 'いまの予定から後ろが10分ずれる（経路の時刻も）', after[0]);
-      t.ok(after.every((x, i) => x !== before[i]), '後ろの予定もすべてずれる', { before, after });
+      t.ok(after.every((x, i) => x !== before[i]), '後ろの予定もすべてずれる（動かさない予定が無い日。ある日は delay.js で確かめる）', { before, after });
       await app(page, A => A.undo());
       const back = await app(page, A => A.state.days[0].events.map(e => e.startTime + '|' + (e.route || []).map(s => s.depTime).join(',')));
       t.eq(back, before, '元に戻すで戻る');
