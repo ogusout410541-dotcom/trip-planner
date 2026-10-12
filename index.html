@@ -739,8 +739,13 @@ const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextT
 /* ---------- 版とアップデート履歴 ----------
    リリースのたびに APP_VERSION と sw.js の CACHE を同じ番号に上げ、CHANGELOG の先頭に1件足す。
    tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const CHANGELOG = [
+  { v: '1.4.1', date: '2026-10-12', title: '東急新横浜線を JR横浜線と取り違えていたのを直しました', items: [
+    ['fix', '新横浜から東急新横浜線に乗る経路を、JR横浜線と取り違えて「大岡山という駅はありません」と出していました。いまは日吉から目黒線へ直通する経路として扱います'],
+    ['fix', '会場と最寄り駅のように歩ける距離のときに、電車の乗る駅を会場の名前に書き換える案を出していました。いまは「歩いて約◯分」と添えて、移動を入れる案内にしています'],
+    ['up', '点検の文に出る路線名を、駅データの正式名ではなく自分で書いた名前にしました'],
+  ] },
   { v: '1.4.0', date: '2026-10-12', title: '遅れてもライブや電車の時刻は動かさない', items: [
     ['fix', '遅れを入れると、そのあとのライブの開場や電車の発車時刻までずらしていました。いまは「時刻を動かさない予定」の手前で止めます'],
     ['new', 'イベントと、電車・バス・飛行機・船は、最初から「時刻を動かさない予定」にしました。予定ごとに編集画面で切り替えられ、カードには「固定」と出ます'],
@@ -1684,21 +1689,44 @@ createApp({
         .replace(/\s/g, '')
         .replace(/^(JR|ＪＲ)(東日本|西日本|東海|九州|北海道|四国)?/i, '');
       LINE_ALIASES.forEach(([re, to]) => { t = t.replace(re, to); });
+      /* 2023年開業の新横浜線は、HeartRails では「相模鉄道・東京急行電鉄」の1本。
+         ふだんは「東急新横浜線」「相鉄新横浜線」と書くので、どれも「新横浜」にそろえる */
+      if (/^(相鉄・東急|東急・相鉄)(電鉄)?$/.test(t) || /^(東急|相鉄)新横浜(線)?$/.test(t) || /^相鉄・東急(直通)?線$/.test(t)) t = '新横浜';
       return t
         .replace(/(株式会社|電鉄|鉄道|電車|地下鉄|線|ライン)/g, '')
         .toLowerCase();
     }
-    /* ユーザーが書いた路線名に、いちばん近いAPIの路線名を返す */
+    /* 路線名から会社を見分ける（「東急新横浜線」を「JR横浜線」と取り違えないため） */
+    const OPERATORS = [
+      ['JR', /^(JR|ＪＲ)|新幹線/], ['東急', /東急|東京急行/], ['相鉄', /相鉄|相模鉄道/], ['京急', /京急|京浜急行/],
+      ['小田急', /小田急/], ['京王', /京王/], ['西武', /西武/], ['東武', /東武/], ['京成', /京成/],
+      ['都営', /都営|東京都交通局/], ['メトロ', /東京メトロ|東京地下鉄|営団/], ['横浜市', /横浜市|ブルーライン|グリーンライン/],
+      ['りんかい', /りんかい|東京臨海/], ['名鉄', /名鉄|名古屋鉄道/], ['近鉄', /近鉄|近畿日本/], ['阪急', /阪急/],
+      ['阪神', /阪神/], ['南海', /南海/], ['京阪', /京阪/], ['大阪メトロ', /大阪メトロ|大阪市高速|osaka ?metro/i],
+    ];
+    const operatorsOf = (name) => OPERATORS.filter(([, re]) => re.test(String(name || ''))).map(([k]) => k);
+    /* ユーザーが書いた路線名に、いちばん近いAPIの路線名を返す。
+       以前は「上から順に、どちらかがもう一方を含む最初のもの」を返していたため、
+       新横浜で「東急新横浜線」が先頭の「JR横浜線」（照合用の名前は「横浜」）に当たっていた。
+       いまは ①会社が食い違うものは外し ②いちばん長く一致するものを選ぶ */
     function matchLine(input, candidates) {
       const list = (candidates || []).filter(Boolean);
       if (!input || !list.length) return '';
       const parts = String(input).split(/[・,、\/]/).map(t => lineKey(t)).filter(Boolean);
       if (!parts.length) return '';
+      const inOps = operatorsOf(input);
+      let best = '', bestScore = 0;
       for (const c of list) {
         const ck = lineKey(c);
-        if (parts.some(p => p && ck && (p === ck || ck.includes(p) || p.includes(ck)))) return c;
+        if (!ck) continue;
+        const cOps = operatorsOf(c);
+        if (inOps.length && cOps.length && !inOps.some(o => cOps.includes(o))) continue;
+        for (const p of parts) {
+          const score = p === ck ? 1000 : (ck.includes(p) ? 500 + p.length : (p.includes(ck) ? ck.length : 0));
+          if (score > bestScore) { bestScore = score; best = c; }
+        }
       }
-      return '';
+      return best;
     }
 
     /* ---- 引いてきたデータの置き場（画面はここを見るだけ） ---- */
@@ -1733,8 +1761,21 @@ createApp({
       if (railIdx.line[t]) return railIdx.line[t];
       const v = await netGet('ln:' + t, RAIL_API + '?method=getStations&line=' + encodeURIComponent(t),
         (j) => (j && j.response && Array.isArray(j.response.station)) ? j.response.station.map(r => r.name) : []);
-      railIdx.line[t] = v || [];
+      railIdx.line[t] = patchLine(t, v || []);
       return railIdx.line[t];
+    }
+    /* HeartRails の路線の駅の並びで、古いままのところを補う。
+       目黒線が武蔵小杉で止まっていると、新横浜線→目黒線の直通（日吉でつながる）を見つけられない */
+    const LINE_PATCH = { '東急目黒線': { after: '武蔵小杉', add: ['元住吉', '日吉'] } };
+    function patchLine(name, list) {
+      const pt = LINE_PATCH[name];
+      if (!pt || !list.length || pt.add.every(x => list.includes(x))) return list;
+      const out = list.slice();
+      const at = out.indexOf(pt.after);
+      const add = pt.add.filter(x => !out.includes(x));
+      if (at === out.length - 1) out.push(...add);
+      else if (at === 0) out.unshift(...add.reverse());
+      return out;
     }
     /* 地点の座標（駅ならHeartRails、それ以外は地名検索から） */
     /* 「自宅」「ホテル」のような一般名詞は、地図で引いても意味がないので引かない */
@@ -5389,11 +5430,11 @@ JA眉山GS前|34.03774|134.51314|113
                 /* 乗り入れ口が、いま乗るこの駅そのもの（例：京浜東北線は横浜から根岸線へ入る）。
                    ここで「乗り換え」と言うのは実態に合わない。路線名を直す話として出す */
                 push({ level: 'info', type: 'rail', key: 'thisjct:' + e.id + ':' + si + ':' + th.line, ids: [e.id], stop: si,
-                       msg: `${apiA} は ${info.name} から先、${th.line} に入ります（${nextInfo.name} まで乗り換えなしで行けます）`,
+                       msg: `${st.line || apiA} は ${info.name} から先、${th.line} に入ります（${nextInfo.name} まで乗り換えなしで行けます）`,
                        how: `この区間は ${th.line} として書くと、駅数や行先の候補も合います`,
                        fixes: [
                          { label: `${th.line} にする`,
-                           detail: `${info.name} から乗る路線を「${apiA}」→「${th.line}」にします`,
+                           detail: `${info.name} から乗る路線を「${st.line || apiA}」→「${th.line}」にします`,
                            run: () => { st.line = th.line; } },
                        ] });
               } else if (th) {
@@ -5403,7 +5444,7 @@ JA眉山GS前|34.03774|134.51314|113
                     Object.assign(blankStop(th.junction), { line: th.line, through }));
                 };
                 push({ level: 'info', type: 'rail', key: 'through:' + e.id + ':' + si + ':' + th.junction, ids: [e.id], stop: si,
-                       msg: `${apiA} と ${th.line} は ${th.junction} でつながっています`,
+                       msg: `${st.line || apiA} と ${th.line} は ${th.junction} でつながっています`,   // 文には本人が書いた路線名を出す（駅データの正式名は読みにくい）
                        how: `直通列車なら ${th.junction} で降りずに行けます。直通でない列車に乗るなら、${th.junction} での乗り換えとして足してください`,
                        fixes: [
                          { label: `${th.junction} を直通で足す`,
@@ -5417,7 +5458,7 @@ JA眉山GS前|34.03774|134.51314|113
                 push({ level: 'error', type: 'rail', key: 'nolink:' + e.id + ':' + si + ':' + apiA + ':' + nextSt.name, ids: [e.id], stop: si,
                        how: `路線名を直すか、${info.name} と ${nextInfo.name} の間に乗換駅を足してください。`
                           + `同じ列車で行けるなら、その駅を足して「直通」にします`,
-                       msg: `${apiA} に ${nextInfo.name} という駅はありません` });
+                       msg: `${st.line || apiA} に ${nextInfo.name} という駅はありません` });
               }
             }
           }
@@ -5563,17 +5604,22 @@ JA眉山GS前|34.03774|134.51314|113
           return VAGUE_PLACES.includes(v) || /(自宅|実家|家$|ホテル|宿$|旅館|民宿|ゲストハウス)/.test(v);
         };
         const edge = (a.anchor === 'start' && bMove) || (b.anchor === 'end' && aMove);
-        const soft = edge && (vague(p) || vague(q));
-        const far = km !== null ? `（約${km < 10 ? km.toFixed(1) : km.toFixed(0)}km）` : '';
+        /* 会場と最寄り駅のように歩ける距離（1.5km 以内）なら、取り違えではなく歩きが抜けているだけ。
+           片方が駅でないときに「次の予定の場所を書き換える」案を出すと、電車の乗る駅が会場の名前になってしまう */
+        const walkable = km !== null && km <= 1.5;
+        const isStation = (t) => !!(stationInfo(t) && stationInfo(t).found);
+        const notStations = !isStation(p) || !isStation(q);
+        const soft = (edge && (vague(p) || vague(q))) || walkable;
+        const far = km !== null ? `（約${km < 10 ? km.toFixed(1) : km.toFixed(0)}km${walkable ? '・歩いて約' + Math.max(1, Math.round(km * 1.3 / 4.5 * 60)) + '分' : ''}）` : '';
         const bName = shortName(b.title);
         push({
           level: soft ? 'info' : 'warn', type: 'chain', move: i,
           key: 'chain:' + a.id + ':' + b.id + ':' + placeKey(p) + ':' + placeKey(q), ids: [a.id, b.id],
           msg: `「${shortName(a.title)}」は ${p} で終わり、「${bName}」は ${q} から始まります${far}`,
           how: soft
-            ? `${p} から ${q} までの移動を足すか、このままで良ければ無視してください`
+            ? `${p} から ${q} までの移動（歩きなど）を足すか、このままで良ければ無視してください`
             : `移動の行き先か、次の予定の場所のどちらかを直してください（あいだに移動を足す手もあります）`,
-          fix: soft ? null : {
+          fix: (soft || notStations) ? null : {
             label: `次を「${p}」にする`,
             detail: `「${bName}」の場所を ${q} → ${p} にします`,
             run: () => {
@@ -8984,7 +9030,7 @@ JA眉山GS前|34.03774|134.51314|113
       copyJson, downloadJson, pullToEditor, persistCurrent, saveError,
       downloadAllBackup, onImportFile, lastBackupAt, brokenCount, downloadBroken,
       APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog, issuesOpen, dayOpsOpen,
-      onCardClick, isFixed, toggleFixed, rippleRange, FIXED_TYPES, dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
+      onCardClick, patchLine, isFixed, toggleFixed, rippleRange, FIXED_TYPES, dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
       share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
       swState, swVersion, ink,
       cloud, cloudOn, cloudSync, openCloudForm, connectCloud, cloudChoose, disconnectCloud, shareCloudConf, showRestoreHint, CLOUD_URL_DEFAULT, openCloudRestore,
