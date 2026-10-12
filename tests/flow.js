@@ -34,6 +34,19 @@ const { bigTrip } = require('./fixtures/gen');
     r = await app(page, A => A.state.days[0].events.length);
     t.ok(r === n0 + 1, '削除も元に戻せる', r);
 
+    // ── カードを押すと編集が開く（中の地図・ボタンを押したときは開かない） ──
+    await page.evaluate(() => document.querySelectorAll('.ev-card')[1].querySelector('.text-base, h3, .font-black').click());
+    await sleep(100);
+    r = await app(page, A => !!A.editing);
+    t.ok(r, 'カードを押すと編集が開く');
+    await app(page, A => A.closeEdit());
+    await sleep(100);
+    await page.evaluate(() => { const b = [...document.querySelectorAll('.ev-card button')].find(x => /上へ|下へ/.test(x.getAttribute('aria-label') || '')); if (b) b.click(); });
+    await sleep(100);
+    r = await app(page, A => !!A.editing);
+    t.ok(!r, 'カードの中のボタンを押したときは編集を開かない');
+    if (r) await app(page, A => A.closeEdit());
+
     // ── 編集画面を閉じるとき、書いた内容を黙って捨てない ──
     await app(page, A => { A.openAdd(0); });
     await app(page, A => { A.editing.title = '書きかけ'; A.tryCloseEdit(); });

@@ -227,10 +227,20 @@
     font-family: inherit; font-size: 11px; font-weight: 700; color: #475569; line-height: 1.5;
   }
 
-  /* ボタンの当たり判定（タッチ端末） */
+  /* ボタンの当たり判定（タッチ端末）。指で押す目安の 44px にそろえる */
   @media (hover: none), (pointer: coarse) {
-    .tap { min-width: 38px; min-height: 38px; }
+    .tap { min-width: 44px; min-height: 44px; }
+    .isu-btn { min-height: 44px; }
   }
+  /* 同じところを素早く2回押しても拡大しない（2本指での拡大はできる） */
+  html { touch-action: manipulation; }
+  /* モーダル・当日モードを開いている間は、後ろの画面をスクロールさせない */
+  html.modal-open, html.modal-open body { overflow: hidden; }
+  /* モーダルの下に固定するボタンの帯（.modal-inner の余白 p-5 / sm:p-6 に合わせて端まで伸ばす） */
+  .sticky-foot { position: sticky; bottom: -1.25rem; z-index: 5; margin: 0 -1.25rem -1.25rem; padding: .75rem 1.25rem 1.25rem;
+                 border-top: 1px solid rgba(148,163,184,.25); }
+  @media (min-width: 640px) { .sticky-foot { bottom: -1.5rem; margin: 0 -1.5rem -1.5rem; padding: .75rem 1.5rem 1.5rem; } }
+  [role="dialog"], [role="dialog"] .modal-inner, [data-daymode] { overscroll-behavior: contain; }
 
   /* ===== 所要の目安チップ ===== */
   .est-chip {
@@ -299,6 +309,10 @@
   .isu { border-radius: 12px; padding: 6px 8px; display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
   .isu-acts { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; min-width: 0; max-width: 100%; }
   .isu-acts .isu-btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 639px) {
+    .isu > button.isu-msg { flex-basis: calc(100% - 24px); }
+    .isu-acts { width: 100%; justify-content: flex-start; padding-left: 17px; }
+  }
   .isu-error { background: #fef2f2; }
   .isu-warn  { background: #fffbeb; }
   .isu-info  { background: #f8fafc; }
@@ -454,6 +468,8 @@
 
   /* ===== HEADER SCROLL ===== */
   header { transition: background-color .2s ease; }
+  /* スマホ幅でスクロールしたら、カウントダウンと予算の帯を畳んで本文の場所を空ける */
+  @media (max-width: 639px) { .header-scrolled .hdr-extra { display: none !important; } }
   .header-scrolled {
     background: rgba(238, 241, 247, 0.96);
     backdrop-filter: blur(20px);
@@ -723,8 +739,19 @@ const { createApp, reactive, computed, ref, watch, onMounted, onUnmounted, nextT
 /* ---------- 版とアップデート履歴 ----------
    リリースのたびに APP_VERSION と sw.js の CACHE を同じ番号に上げ、CHANGELOG の先頭に1件足す。
    tag: new=新しい機能 / up=よくなったところ / fix=直したところ。使う人の言葉で書く */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const CHANGELOG = [
+  { v: '1.3.0', date: '2026-10-12', title: 'スマホで作りやすく', items: [
+    ['up', '予定の編集で、「保存」と「キャンセル」をいつも画面の下に出すようにしました。長い予定でも一番下までスクロールしなくて済みます'],
+    ['up', 'すでにある予定を開いたときは、カテゴリを1行にたたみました。タイトルと時刻がすぐ上に出ます'],
+    ['up', '予定のカードのどこを押しても、編集が開くようにしました'],
+    ['up', 'スマホの幅では、点検の一覧と「この日の操作」をたたみ、最初の予定が1画面目に入るようにしました。スクロールすると上の帯も薄くなります'],
+    ['up', 'スマホの幅では、印刷を設定へ移しました'],
+    ['up', '押すところを指で押しやすい大きさにそろえました'],
+    ['fix', '電車の経路を直すとき、スマホでは駅名の欄がつぶれて文字が入れにくくなっていました'],
+    ['fix', '旅程の管理で、スマホでは旅程の名前が1文字しか見えていませんでした'],
+    ['fix', '画面を開いている間に、後ろの画面まで一緒にスクロールしていました'],
+  ] },
   { v: '1.2.0', date: '2026-10-12', title: 'クラウドに保存', items: [
     ['new', 'クラウドに保存：直すたびに、自分の Google ドライブにも旅程を保存します。Cookie やサイトデータを消しても、合言葉を入れれば戻せます'],
     ['new', 'ドライブには1日1つ、30日ぶんの過去の版が残ります'],
@@ -6069,6 +6096,10 @@ JA眉山GS前|34.03774|134.51314|113
     /* ---------- カードのメニュー / モーダル ---------- */
     const menuFor = ref('');
     const showHelp = ref(false);
+    /* スマホ幅では、点検の一覧と日の操作をたたんでおく（最初の予定までが遠かったため） */
+    const narrowScreen = !!(window.matchMedia && window.matchMedia('(max-width: 639px)').matches);
+    const issuesOpen = ref(!narrowScreen);
+    const dayOpsOpen = ref(false);
     /* アップデート履歴。since があれば、その版より新しいものに「NEW」を付ける */
     const LS_SEEN_VER = 'trip_seen_version_v1';
     const changelog = reactive({ open: false, since: '' });
@@ -6849,8 +6880,9 @@ JA眉山GS前|34.03774|134.51314|113
     const catOverride = ref(null);          // null=自動判定 / true=開く / false=畳む
     const catOpen = computed(() => {
       if (catOverride.value !== null) return catOverride.value;
-      /* 役割（出発地点・到着地点）を選んでいるときは既定で畳む */
-      return !(editing.value && editing.value.anchor);
+      /* 役割（出発地点・到着地点）を選んでいるとき、すでにある予定を直すときは既定で畳む
+         （スマホでは一覧が画面の半分近くを占め、タイトルや時刻が下に押し出されていた） */
+      return !!(editing.value && !editing.value.anchor && editing.value.__isNew);
     });
     watch(() => editing.value && editing.value.anchor, () => { catOverride.value = null; });
     const modalTitle = (e) => {
@@ -7902,6 +7934,14 @@ JA眉山GS前|34.03774|134.51314|113
     }
     const swVersion = computed(() => swState.cache ? swState.cache.replace(/^trip-v/, '') : '');
 
+    /* カードを押したら編集を開く。中のボタン・リンク・入力欄を押したとき、文字を選んでいるとき、並べ替えの最中は開かない */
+    function onCardClick(di, ev, e) {
+      if (movingId.value || menuFor.value) return;
+      if (e && e.target && e.target.closest && e.target.closest('button, a, input, select, textarea, label, summary, [data-noedit]')) return;
+      try { if (String(window.getSelection ? window.getSelection() : '')) return; } catch {}
+      openEdit(di, ev);
+    }
+
     /* ---------- drag & drop reorder ---------- */
     const dragSrc = ref(null); // {dayIdx, evId}
     function onDragStart(dayIdx, ev, e) {
@@ -8701,6 +8741,7 @@ JA眉山GS前|34.03774|134.51314|113
     const currentDialog = () => openModalKey.value
       ? document.querySelector('[data-modal="' + openModalKey.value + '"]') : null;
     let lastFocused = null;
+    watch(() => !!(openModalKey.value || dayMode.on), (on) => { document.documentElement.classList.toggle('modal-open', on); }, { immediate: true });
     watch(openModalKey, (k, prev) => {
       if (k && !prev) lastFocused = document.activeElement;
       if (k) {
@@ -8895,8 +8936,8 @@ JA眉山GS前|34.03774|134.51314|113
       totalActual, totalPaid, totalUnpaid, dayTotal, dayUnpaid, eventCount, budgetPct, overBudget, hasBudget, members, perPerson,
       copyJson, downloadJson, pullToEditor, persistCurrent, saveError,
       downloadAllBackup, onImportFile, lastBackupAt, brokenCount, downloadBroken,
-      APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog,
-      dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
+      APP_VERSION, CHANGELOG, CHANGE_TAGS, verCmp, changelog, openChangelog, issuesOpen, dayOpsOpen,
+      onCardClick, dayMode, dm, untilText, dmTime, openDayMode, closeDayMode, dayModePick, dayModeDelay, setWake, wakeSupported, boardText, dmFocus, dmPlace,
       share, openShare, copyShare, nativeShare, incoming, acceptIncoming, rejectIncoming,
       swState, swVersion, ink,
       cloud, cloudOn, cloudSync, openCloudForm, connectCloud, cloudChoose, disconnectCloud, shareCloudConf, showRestoreHint, CLOUD_URL_DEFAULT, openCloudRestore,
@@ -9062,8 +9103,9 @@ JA眉山GS前|34.03774|134.51314|113
               class="tap w-9 h-9 grid place-items-center rounded-xl text-sm font-bold text-indigo-600 hover:bg-white/70 transition">
               <i class="fa-solid fa-person-walking-luggage"></i>
             </button>
-            <button @click="print" title="印刷 / PDF（Ctrl+P）"
-              class="px-3 sm:px-4 h-9 ml-0.5 rounded-xl text-sm font-bold text-white shadow-lg transition flex items-center gap-2 shrink-0"
+            <!-- スマホ幅では印刷を設定へ移す（ヘッダーのタイトルの幅を空けるため。スマホから刷ることはまれ） -->
+            <button @click="print" title="印刷 / PDF（Ctrl+P）" aria-label="印刷 / PDF"
+              class="hidden sm:flex px-3 sm:px-4 h-9 ml-0.5 rounded-xl text-sm font-bold text-white shadow-lg transition items-center gap-2 shrink-0"
               style="background:linear-gradient(135deg,#6366f1,#a855f7)">
               <i class="fa-solid fa-print"></i><span class="hidden sm:inline">印刷</span>
             </button>
@@ -9071,7 +9113,7 @@ JA眉山GS前|34.03774|134.51314|113
         </div>
 
         <!-- 次回・次々回イベントまでのカウントダウン -->
-        <div v-if="upcomingTrips.length" class="flex items-center gap-2 pt-2 border-t overflow-x-auto"
+        <div v-if="upcomingTrips.length" class="hdr-extra flex items-center gap-2 pt-2 border-t overflow-x-auto"
              :class="isDark ? 'border-slate-700' : 'border-slate-200'">
           <button v-for="t in upcomingTrips" :key="t.id" @click="switchTrip(t.id)" type="button"
                   class="tap shrink-0 flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-xl text-left transition"
@@ -9089,7 +9131,7 @@ JA眉山GS前|34.03774|134.51314|113
         </div>
 
         <!-- budget mini（モバイル/タブレット用 横バー） -->
-        <div class="lg:hidden flex items-center gap-2.5 pt-2 border-t"
+        <div class="hdr-extra lg:hidden flex items-center gap-2.5 pt-2 border-t"
              :class="isDark ? 'border-slate-700' : 'border-slate-200'">
           <div class="text-[10px] text-slate-400 font-bold shrink-0">{{ hasBudget ? '実績/予算' : '合計' }}</div>
           <div class="text-xs font-extrabold tabular-nums shrink-0" :class="overBudget ? 'text-rose-500':'text-ink'">
@@ -9284,8 +9326,13 @@ JA眉山GS前|34.03774|134.51314|113
                     title="この日その場で払うぶん">当日 {{ yen(dayStats(day).unpaidCost) }}</span>
             </div>
 
-            <!-- 日の操作 -->
-            <div class="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
+            <!-- 日の操作（スマホ幅ではめったに使わないので、「この日の操作」にたたむ） -->
+            <button @click="dayOpsOpen = !dayOpsOpen" :aria-expanded="dayOpsOpen ? 'true' : 'false'"
+                    class="tap sm:hidden mt-3 w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-500 bg-white/70 hover:bg-white transition flex items-center justify-between">
+              <span><i class="fa-solid fa-sliders mr-1.5"></i>この日の操作</span>
+              <i class="fa-solid" :class="dayOpsOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </button>
+            <div class="items-center gap-1.5 flex-wrap mt-3 pt-3 border-t" :class="[isDark ? 'border-slate-700' : 'border-slate-200', dayOpsOpen ? 'flex' : 'hidden sm:flex']">
               <button @click="sortDayManual(di)" title="時刻順に整列（S）"
                 class="tap px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 bg-white/70 hover:bg-white transition flex items-center gap-1.5">
                 <i class="fa-solid fa-arrow-down-1-9"></i>時刻順に整列
@@ -9320,17 +9367,17 @@ JA眉山GS前|34.03774|134.51314|113
                   </div>
                 </div>
               </div>
-              <button @click="moveDay(di,-1)" :disabled="di===0" title="前の日と入れ替え"
+              <button @click="moveDay(di,-1)" :disabled="di===0" title="前の日と入れ替え" aria-label="前の日と入れ替え"
                 class="tap w-8 h-8 rounded-lg text-[11px] font-bold bg-white/70 hover:bg-white transition"
                 :class="di===0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500'">
                 <i class="fa-solid fa-arrow-left"></i>
               </button>
-              <button @click="moveDay(di,1)" :disabled="di===state.days.length-1" title="次の日と入れ替え"
+              <button @click="moveDay(di,1)" :disabled="di===state.days.length-1" title="次の日と入れ替え" aria-label="次の日と入れ替え"
                 class="tap w-8 h-8 rounded-lg text-[11px] font-bold bg-white/70 hover:bg-white transition"
                 :class="di===state.days.length-1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500'">
                 <i class="fa-solid fa-arrow-right"></i>
               </button>
-              <button @click="removeDay(di)" title="この日を削除"
+              <button @click="removeDay(di)" title="この日を削除" aria-label="この日を削除"
                 class="tap ml-auto w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
@@ -9354,14 +9401,17 @@ JA眉山GS前|34.03774|134.51314|113
           <div v-if="(activeIssues.length || ignoredCount) && activeDay === di"
                class="rounded-2xl border px-3 py-2.5 mb-4"
                :class="isDark ? 'border-slate-700 bg-slate-800/40' : 'border-slate-200 bg-white/70'">
-            <div class="text-[11px] font-black flex items-center gap-2 mb-1.5 flex-wrap"
-                 :class="isDark ? 'text-slate-300' : 'text-slate-600'">
+            <div class="text-[11px] font-black flex items-center gap-2 flex-wrap" :class="[isDark ? 'text-slate-300' : 'text-slate-600', issuesOpen ? 'mb-1.5' : 'sm:mb-1.5']">
               <i class="fa-solid fa-clipboard-check text-indigo-400"></i>点検
               <span v-if="issueCounts.error" class="px-1.5 py-0.5 rounded-md text-[10px] bg-rose-100 text-rose-700">要修正 {{ issueCounts.error }}</span>
               <span v-if="issueCounts.warn" class="px-1.5 py-0.5 rounded-md text-[10px] bg-amber-100 text-amber-700">注意 {{ issueCounts.warn }}</span>
               <span v-if="issueCounts.info" class="px-1.5 py-0.5 rounded-md text-[10px]"
                     :class="isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-500'">気づき {{ issueCounts.info }}</span>
               <span v-if="!activeIssues.length" class="text-emerald-600">この日は問題なし</span>
+              <button v-if="activeIssues.length || ignoredCount" @click="issuesOpen = !issuesOpen" :aria-expanded="issuesOpen ? 'true' : 'false'"
+                      class="tap sm:hidden ml-auto px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-600 hover:bg-indigo-500/10">
+                {{ issuesOpen ? '閉じる' : '見る' }}<i class="fa-solid ml-1" :class="issuesOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              </button>
               <button v-if="overlapWarnsOf(di).length" @click="toggleIgnoreOverlap(di)"
                       title="フェスの被りなど、重なっていて当たり前の日はこちら"
                       class="tap ml-auto px-2 py-0.5 rounded-lg text-[10px] font-bold border transition"
@@ -9369,7 +9419,7 @@ JA眉山GS前|34.03774|134.51314|113
                 <i class="fa-solid fa-bell-slash mr-1"></i>重なりは気にしない
               </button>
             </div>
-            <ul class="space-y-1">
+            <ul class="space-y-1" :class="issuesOpen ? '' : 'hidden sm:block'">
               <li v-for="(iss, ii) in activeIssues" :key="'iss'+ii" class="isu" :class="'isu-' + iss.level">
                 <i class="fa-solid shrink-0 text-[10px] mt-0.5 isu-msg"
                    :class="iss.level==='error' ? 'fa-circle-exclamation' : (iss.level==='warn' ? 'fa-triangle-exclamation' : 'fa-lightbulb')"></i>
@@ -9392,7 +9442,7 @@ JA眉山GS前|34.03774|134.51314|113
                 </div>
               </li>
             </ul>
-            <div v-if="ignoredCount" class="mt-1.5 flex items-center gap-2 flex-wrap">
+            <div v-if="ignoredCount" class="mt-1.5 items-center gap-2 flex-wrap" :class="issuesOpen ? 'flex' : 'hidden sm:flex'">
               <button @click="showIgnored = !showIgnored" class="tap px-2 py-1.5 -ml-2 rounded-lg text-[11px] font-bold text-indigo-500 hover:underline">
                 <i class="fa-solid" :class="showIgnored ? 'fa-eye-slash' : 'fa-eye'"></i>
                 無視した指摘 {{ ignoredCount }}件を{{ showIgnored ? '隠す' : '表示' }}
@@ -9477,7 +9527,8 @@ JA眉山GS前|34.03774|134.51314|113
                 <i class="fa-solid" :class="ev.anchor ? anchorCfg(ev.anchor).icon : cat(ev.type).icon"></i>
               </div>
 
-              <div class="glass ev-card rounded-2xl p-4 transition hover:shadow-xl min-w-0"
+              <!-- カードのどこを押しても編集が開く（スマホで鉛筆の小さなボタンを狙わなくてよいように） -->
+              <div class="glass ev-card rounded-2xl p-4 transition hover:shadow-xl min-w-0 cursor-pointer" @click="onCardClick(di, ev, $event)"
                    :class="[highlightId===ev.id ? 'ev-highlight' : '', (!ev.anchor && conflictIds.has(ev.id)) ? 'ev-conflict' : '']"
                    :style="ev.anchor
                      ? { outline: '2px solid '+anchorCfg(ev.anchor).color, outlineOffset: '1px', background: isDark ? '' : '#ffffff' }
@@ -9905,7 +9956,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="showSettings" data-modal="settings" role="dialog" aria-modal="true" aria-label="旅程の設定" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="showSettings=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-5">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -10171,7 +10222,7 @@ JA眉山GS前|34.03774|134.51314|113
           <!-- 版 -->
           <div class="mt-5 pt-4 border-t flex items-center gap-2 flex-wrap" :class="isDark ? 'border-slate-700' : 'border-slate-200'">
             <span class="text-xs font-black text-ink"><i class="fa-solid fa-code-branch text-indigo-400 mr-1"></i>バージョン v{{ APP_VERSION }}</span>
-            <button @click="openChangelog()" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
+            <button @click="openChangelog()" class="tap ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-white/70 hover:bg-white border border-slate-200">アップデート履歴</button>
             <p class="w-full text-[11px] text-slate-500 leading-relaxed">
               <i class="fa-solid fa-wifi mr-1"></i>
               <template v-if="!swState.https">圏外で使えるのは、公開ページ（https）で開いたときです。スマホへは「スマホで開く」から送れます。</template>
@@ -10179,6 +10230,8 @@ JA眉山GS前|34.03774|134.51314|113
               <template v-else-if="swVersion === APP_VERSION">圏外でも開けます（v{{ swVersion }} をこの端末に保存済み）。</template>
               <template v-else>この端末に保存されている版は v{{ swVersion }} です。読み込み直すと v{{ APP_VERSION }} に切り替わります。</template>
             </p>
+            <button @click="showSettings = false; print()" class="sm:hidden w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-print"></i>印刷 / PDF</button>
             <button @click="toggleDark" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
               <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>{{ isDark ? '明るい画面にする' : '暗い画面にする' }}</button>
             <button @click="showSettings = false; showJsonModal = true; pullToEditor()" class="w-full py-2.5 rounded-xl text-sm font-bold text-slate-700 bg-white/70 hover:bg-white border border-slate-200 transition flex items-center justify-center gap-2">
@@ -10187,11 +10240,13 @@ JA眉山GS前|34.03774|134.51314|113
               <i class="fa-solid fa-mobile-screen-button"></i>スマホで開く（リンク・QRコード）</button>
           </div>
 
-          <button @click="showSettings=false"
-            class="mt-5 w-full py-3 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition"
-            style="background:linear-gradient(135deg,#6366f1,#a855f7)">
-            <i class="fa-solid fa-check mr-1"></i>完了
-          </button>
+          <div class="sticky-foot mt-5" :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
+            <button @click="showSettings=false"
+              class="w-full py-3 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition"
+              style="background:linear-gradient(135deg,#6366f1,#a855f7)">
+              <i class="fa-solid fa-check mr-1"></i>完了
+            </button>
+          </div>
         </div>
       </div>
     </transition>
@@ -10203,7 +10258,7 @@ JA眉山GS前|34.03774|134.51314|113
       <div v-if="fixDlg.open" data-modal="fix" role="dialog" aria-modal="true" aria-label="直し方"
            class="no-print fixed inset-0 z-[55] grid place-items-center p-3 sm:p-4">
         <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" @click="fixDlg.open = false"></div>
-        <div class="relative glass rounded-3xl shadow-2xl w-full max-w-xl max-h-[88vh] overflow-y-auto p-4 sm:p-5">
+        <div class="relative glass rounded-3xl shadow-2xl w-full max-w-xl max-h-[88dvh] overflow-y-auto p-4 sm:p-5">
           <div class="flex items-start gap-2 mb-3">
             <span class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0 bg-rose-500">
               <i class="fa-solid fa-screwdriver-wrench"></i>
@@ -10306,7 +10361,7 @@ JA眉山GS前|34.03774|134.51314|113
       <div v-if="tw.open" data-modal="train" role="dialog" aria-modal="true" aria-label="列車を選ぶ"
            class="no-print fixed inset-0 z-[60] grid place-items-center p-3 sm:p-4">
         <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" @click="tw.open = false"></div>
-        <div class="relative glass rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-5">
+        <div class="relative glass rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto p-4 sm:p-5">
 
           <div class="flex items-center gap-2 mb-3">
             <span class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -10370,7 +10425,7 @@ JA眉山GS前|34.03774|134.51314|113
             <div v-if="!tw.railCands.length && !tw.loading" class="text-[11px] text-slate-400 mb-2">
               {{ tw.note || (twWord.line + '名を手で入れてください') }}
             </div>
-            <div class="space-y-1.5 max-h-[46vh] overflow-y-auto pr-1">
+            <div class="space-y-1.5 max-h-[46dvh] overflow-y-auto pr-1">
               <button v-for="(c, ci) in tw.railCands" :key="'tr'+ci" @click="twPickRailway(c)"
                       class="tap w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 transition text-left"
                       :style="{borderColor: lineColor(c.title) || (isDark ? '#334155' : '#e2e8f0'),
@@ -10396,7 +10451,7 @@ JA眉山GS前|34.03774|134.51314|113
               {{ tw.railTitle }}で、どこまで行きますか？
               <span v-if="twStationList.length" class="font-medium text-slate-400">（{{ twStationList.length }}{{ twWord.unit }}）</span>
             </div>
-            <div v-if="twStationList.length" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[46vh] overflow-y-auto pr-1">
+            <div v-if="twStationList.length" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[46dvh] overflow-y-auto pr-1">
               <button v-for="(stn, si2) in twStationList" :key="'tt'+si2" @click="twPickTo(stn)"
                       class="tap px-3 py-3 rounded-xl text-[13px] font-bold border transition text-left truncate min-h-[44px]"
                       :class="stn.title === tw.from
@@ -10438,7 +10493,7 @@ JA眉山GS前|34.03774|134.51314|113
             <div v-if="tw.note" class="text-[11px] font-bold text-amber-600 mb-2">
               <i class="fa-solid fa-circle-info mr-1"></i>{{ tw.note }}
             </div>
-            <div v-if="tw.trains.length" class="space-y-1 max-h-[42vh] overflow-y-auto pr-1">
+            <div v-if="tw.trains.length" class="space-y-1 max-h-[42dvh] overflow-y-auto pr-1">
               <button v-for="(t, ti) in tw.trains" :key="'tn'+ti" @click="twPickTrain(t)"
                       class="tap w-full flex items-center gap-2 px-3 py-3 rounded-xl border transition text-left min-h-[48px]"
                       :class="isDark ? 'border-slate-700 hover:border-indigo-500' : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50'">
@@ -10520,7 +10575,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="showJsonModal" data-modal="json" role="dialog" aria-modal="true" aria-label="バックアップと書き出し" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="showJsonModal=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -10592,7 +10647,7 @@ JA眉山GS前|34.03774|134.51314|113
     <!-- ============ EDIT MODAL ============ -->
     <transition name="fade">
       <div v-if="editing" data-modal="edit" role="dialog" aria-modal="true" :aria-label="modalTitle(editing)" class="no-print fixed inset-0 z-50 grid place-items-center p-4" style="background:rgba(31,36,51,.45)" @click.self="tryCloseEdit()">
-        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <!-- 書いたものを捨てる前に、必ず一度たずねる -->
           <div v-if="discardAsk" class="mb-4 rounded-2xl border-2 px-3.5 py-3"
@@ -10705,7 +10760,7 @@ JA眉山GS前|34.03774|134.51314|113
                 </span>
                 <button @click="catOverride = true" class="tap shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold text-indigo-500 hover:underline hover:bg-indigo-500/10">変更</button>
               </template>
-              <button v-else-if="editing.anchor" @click="catOverride = false"
+              <button v-else-if="editing.anchor || !editing.__isNew" @click="catOverride = false"
                       class="ml-auto shrink-0 text-[11px] font-bold text-slate-400 hover:underline">閉じる</button>
             </div>
             <div v-if="catOpen" class="mt-1.5 space-y-1.5">
@@ -10734,7 +10789,7 @@ JA眉山GS前|34.03774|134.51314|113
           </label>
           <div v-if="titleSuggests(editing).length" class="flex items-center gap-1.5 flex-wrap mb-3">
             <button v-for="t in titleSuggests(editing)" :key="'ts'+t" @click="editing.title = t"
-              class="px-2 py-1 rounded-lg text-[11px] font-bold transition"
+              class="tap px-2 py-1 rounded-lg text-[11px] font-bold transition"
               :style="isDark ? {background:'#1e293b', color:'#94a3b8'} : {background:'#f1f4f9', color:'#536175'}">
               <i class="fa-solid fa-plus text-[8px] mr-1 opacity-60"></i>{{ t }}
             </button>
@@ -10903,8 +10958,8 @@ JA眉山GS前|34.03774|134.51314|113
                        ? {background:'rgba(30,41,59,0.6)', borderColor: si === 0 || si === editing.route.length - 1 ? 'rgba(99,102,241,0.4)' : 'rgba(71,85,105,0.4)'}
                        : {background:'#fff', borderColor: si === 0 || si === editing.route.length - 1 ? '#c7d2fe' : '#e2e8f0'}">
 
-                  <!-- 駅名と操作 -->
-                  <div class="flex items-center gap-1.5 px-2.5 py-2"
+                  <!-- 駅名と操作（狭い画面では、乗換・対面・並べ替えのボタンを2行目に回して駅名の幅を確保する） -->
+                  <div class="flex items-center flex-wrap gap-1.5 px-2.5 py-2"
                        :style="isDark ? {background:'rgba(15,23,42,0.5)'} : {background:'#f8fafc'}">
                     <span class="w-5 h-5 rounded-full grid place-items-center text-[9px] font-black shrink-0 text-white"
                           :style="{background: si === 0 ? ink(ANCHORS.start.color, '#ffffff') : (si === editing.route.length - 1 ? ink(ANCHORS.end.color, '#ffffff') : '#64748b')}">
@@ -10913,7 +10968,7 @@ JA眉山GS前|34.03774|134.51314|113
                     <input v-model="st.name" :id="'stop-' + si" list="dl-station"
                            @keydown.enter.prevent="focusNextStop(si)"
                            :placeholder="si === 0 ? '出発する駅' : (si === editing.route.length - 1 ? '降りる駅' : '乗り換える駅')"
-                           class="flex-1 min-w-0 rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-bold focus:border-indigo-400 outline-none" />
+                           class="flex-1 min-w-[9rem] rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-bold focus:border-indigo-400 outline-none" />
                     <span v-if="si === 0" class="text-[9px] font-black shrink-0" :style="{color: ink(ANCHORS.start.color)}">出発</span>
                     <span v-else-if="si === editing.route.length - 1" class="text-[9px] font-black shrink-0" :style="{color: ink(ANCHORS.end.color)}">到着</span>
                     <button v-else @click="toggleThrough(st)"
@@ -10934,7 +10989,7 @@ JA眉山GS前|34.03774|134.51314|113
                               : (isDark ? 'text-slate-400 border-slate-600' : 'text-slate-400 border-slate-200')">
                       <i class="fa-solid fa-right-left mr-0.5"></i>対面
                     </button>
-                    <div class="flex items-center gap-0.5 shrink-0">
+                    <div class="flex items-center gap-0.5 shrink-0 ml-auto">
                       <button @click="moveStop(si, -1)" :disabled="si === 0" aria-label="この駅を上へ" title="上へ"
                               class="tap w-7 h-7 rounded-lg transition"
                               :class="si === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-500 hover:bg-white/70'">
@@ -11008,7 +11063,7 @@ JA眉山GS前|34.03774|134.51314|113
                     </div>
 
                     <!-- 着・発（この駅での乗換） -->
-                    <div class="grid gap-2" :class="(si > 0 && si < editing.route.length - 1) ? 'grid-cols-2' : 'grid-cols-1'">
+                    <div class="grid gap-2" :class="(si > 0 && si < editing.route.length - 1) ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'">
                       <div v-if="si > 0" class="rounded-lg px-2 py-1.5" :class="isDark ? 'bg-slate-900/50' : 'bg-indigo-50/60'">
                         <div class="text-[9px] font-black mb-1" :class="st.through ? 'text-teal-600' : 'text-indigo-500'">
                           <i class="fa-solid text-[8px] mr-1" :class="st.through ? 'fa-arrow-right-long' : 'fa-arrow-down-to-line'"></i>{{ st.through ? (editing.type === 'bus' ? 'ここを通る' : 'この駅を通る') : (editing.type === 'bus' ? 'ここで降りる' : 'この駅に着く') }}
@@ -11242,7 +11297,8 @@ JA眉山GS前|34.03774|134.51314|113
             <input v-model="editing.url" placeholder="https://" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-400 outline-none" />
           </label>
 
-          <div class="flex gap-3">
+          <!-- 保存・キャンセルは、長い予定でもスクロールせずに押せるよう下に固定する -->
+          <div class="sticky-foot flex gap-3" :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
             <button @click="tryCloseEdit()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
             <button @click="saveEvent" class="flex-1 py-3 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition"
               style="background:linear-gradient(135deg,#6366f1,#a855f7)" title="Ctrl+Enter でも保存できます">
@@ -11257,7 +11313,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="showTripPanel" data-modal="trip" role="dialog" aria-modal="true" aria-label="旅程の管理" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="showTripPanel=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[85vh] flex flex-col" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[85dvh] flex flex-col" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-5">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -11313,9 +11369,12 @@ JA眉山GS前|34.03774|134.51314|113
                    :style="{ background: trip.id === currentTripId ? '#4f46e5' : '#64748b' }">
                 {{ ti + 1 }}
               </div>
+              <!-- 名前は1行まるごと使う（スマホで「h…」の1文字まで潰れていた）。札・日付・ボタンは2行目 -->
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <div class="font-bold text-ink text-sm truncate">{{ trip.title }}</div>
+                <div class="font-bold text-ink text-sm leading-snug break-words line-clamp-2">
+                  <i v-if="trip.id === currentTripId" class="fa-solid fa-check text-indigo-500 mr-1" title="表示中"></i>{{ trip.title }}
+                </div>
+                <div class="mt-1 flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
                   <button @click.stop="toggleTripStatus(trip.id)"
                           :aria-label="trip.title + '：' + (trip.status === 'done' ? '完成（押すと作成中に戻します）' : '作成中（押すと完成にします）')"
                           :title="trip.status === 'done' ? '完成。押すと「作成中」に戻します' : 'まだ作成中。押すと「完成」にします'"
@@ -11325,23 +11384,19 @@ JA眉山GS前|34.03774|134.51314|113
                             : 'text-amber-600 border-amber-300 bg-amber-50 hover:bg-amber-100'">
                     <i class="fa-solid mr-0.5" :class="trip.status === 'done' ? 'fa-circle-check' : 'fa-pen-ruler'"></i>{{ trip.status === 'done' ? '完成' : '作成中' }}
                   </button>
-                </div>
-                <div class="text-xs text-slate-400 flex items-center gap-1 flex-wrap min-w-0">
-                  <span>{{ trip.startDate || '日付未設定' }}<span v-if="trip.endDate"> 〜 {{ trip.endDate }}</span></span>
-                  <template v-if="trip.dayCount">
-                    <span>·</span><span>{{ trip.dayCount }}日間 {{ trip.eventCount || 0 }}件</span>
-                  </template>
+                  <span class="text-xs text-slate-400 min-w-0">{{ trip.startDate || '日付未設定' }}<span v-if="trip.endDate"> 〜 {{ trip.endDate }}</span><template v-if="trip.dayCount">・{{ trip.dayCount }}日間 {{ trip.eventCount || 0 }}件</template></span>
+                  <span class="ml-auto flex items-center gap-0.5 shrink-0">
+                    <button @click.stop="duplicateTrip(trip.id)" :aria-label="trip.title + ' を複製'" title="この旅程をコピーして新しく作る"
+                            class="tap w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition">
+                      <i class="fa-solid fa-copy text-xs"></i>
+                    </button>
+                    <button @click.stop="deleteTrip(trip.id)" :aria-label="trip.title + ' を削除'" title="この旅程を削除"
+                            class="tap w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition">
+                      <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                  </span>
                 </div>
               </div>
-              <i v-if="trip.id === currentTripId" class="fa-solid fa-check text-indigo-500 shrink-0" title="表示中"></i>
-              <button @click.stop="duplicateTrip(trip.id)" :aria-label="trip.title + ' を複製'" title="この旅程をコピーして新しく作る"
-                      class="tap w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition shrink-0">
-                <i class="fa-solid fa-copy text-xs"></i>
-              </button>
-              <button @click.stop="deleteTrip(trip.id)" :aria-label="trip.title + ' を削除'" title="この旅程を削除"
-                      class="tap w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition shrink-0">
-                <i class="fa-solid fa-trash-can text-xs"></i>
-              </button>
             </div>
           </div>
 
@@ -11366,7 +11421,7 @@ JA眉山GS前|34.03774|134.51314|113
       <div v-if="addMenu.open" data-modal="add" role="dialog" aria-modal="true" aria-label="追加するものを選ぶ"
            class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="addMenu.open=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -11453,7 +11508,7 @@ JA眉山GS前|34.03774|134.51314|113
            :aria-label="moveWizard.mode === 'route' ? 'ルートを作る' : (moveWizard.mode === 'next' ? '次はどこへ' : '移動を追加')"
            class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="moveWizard.open=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -11699,7 +11754,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="showSearch" data-modal="search" role="dialog" aria-modal="true" aria-label="検索" class="no-print fixed inset-0 z-50 flex items-start justify-center p-3 sm:p-4 pt-12 sm:pt-16"
            style="background:rgba(31,36,51,.45)" @click.self="showSearch=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-2xl p-4 sm:p-5 max-h-[82vh] flex flex-col" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-2xl p-4 sm:p-5 max-h-[82dvh] flex flex-col" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
 
           <!-- 入力欄 -->
@@ -11721,7 +11776,7 @@ JA眉山GS前|34.03774|134.51314|113
           <!-- カテゴリ絞り込み -->
           <div class="flex items-center gap-1.5 flex-wrap mt-3">
             <button v-for="k in CAT_KEYS" :key="'cf'+k" @click="toggleCatFilter(k)"
-              class="px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
+              class="tap px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
               :style="catFilter.includes(k)
                 ? {borderColor: CATS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : CATS[k].soft, color: ink(CATS[k].color)}
                 : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f1f4f9', color:'#94a3b8'}">
@@ -11729,7 +11784,7 @@ JA眉山GS前|34.03774|134.51314|113
             </button>
             <span class="w-px h-4 mx-0.5" :class="isDark ? 'bg-slate-700' : 'bg-slate-200'"></span>
             <button v-for="k in ['start','end']" :key="'af'+k" @click="toggleAnchorFilter(k)"
-              class="px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
+              class="tap px-2 py-1 rounded-lg text-[11px] font-bold border-2 transition flex items-center gap-1"
               :style="anchorFilter.includes(k)
                 ? {borderColor: ANCHORS[k].color, background: isDark ? 'rgba(99,102,241,0.15)' : '#f8fafc', color: ink(ANCHORS[k].color)}
                 : {borderColor:'transparent', background: isDark ? '#1e293b' : '#f1f4f9', color:'#94a3b8'}">
@@ -11919,7 +11974,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="share.open" data-modal="share" role="dialog" aria-modal="true" aria-label="スマホで開く" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="share.open=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
@@ -11966,7 +12021,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="cloud.ask" data-modal="cloudask" role="dialog" aria-modal="true" aria-label="クラウドの旅程をどうするか" class="no-print fixed inset-0 z-[60] grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-3">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)"><i class="fa-solid fa-cloud"></i></div>
@@ -11990,7 +12045,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="incoming.open && incoming.data" data-modal="incoming" role="dialog" aria-modal="true" aria-label="旅程を受け取る" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)">
-        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0" style="background:linear-gradient(135deg,#6366f1,#a855f7)">
@@ -12026,7 +12081,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="changelog.open" data-modal="changelog" role="dialog" aria-modal="true" aria-label="アップデート履歴" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="changelog.open=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"
@@ -12062,7 +12117,7 @@ JA眉山GS前|34.03774|134.51314|113
     <transition name="fade">
       <div v-if="showHelp" data-modal="help" role="dialog" aria-modal="true" aria-label="ショートカットと使い方" class="no-print fixed inset-0 z-50 grid place-items-center p-4"
            style="background:rgba(31,36,51,.45)" @click.self="showHelp=false">
-        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto scroll-thin" tabindex="-1"
+        <div class="glass modal-inner rounded-3xl w-full max-w-lg p-5 sm:p-6 max-h-[90dvh] overflow-y-auto scroll-thin" tabindex="-1"
              :style="isDark ? {background:'rgba(15,23,42,0.97)'} : {background:'#ffffff'}">
           <div class="flex items-center gap-2 mb-5">
             <div class="w-9 h-9 rounded-xl grid place-items-center text-white shrink-0"

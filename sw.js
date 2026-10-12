@@ -1,7 +1,7 @@
 // 旅程プランナーのオフライン用 Service Worker
 // ・https で開いたときだけ登録する（localhost / file:// では使わない。index.html の registerSW を参照）
 // ・リリースのたびに CACHE を index.html の APP_VERSION と同じ番号に上げる（上げないとスマホに古い版が残る）
-const CACHE = 'trip-v1.2.0';
+const CACHE = 'trip-v1.3.0';
 const FONT_CACHE = 'trip-fonts';
 const ASSETS = [
   './',
